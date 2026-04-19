@@ -1,0 +1,19 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { loadTableInfos } from '../core/context';
+import { renderTemplate } from '../template/loader';
+
+export async function generateApi(tables: string[]) {
+    const infos = loadTableInfos(tables);
+    const viewsDir = path.resolve(process.cwd(), 'src/views');
+
+    for (const info of infos) {
+        const dir = path.join(viewsDir, info.name);
+        fs.mkdirSync(dir, { recursive: true });
+
+        fs.writeFileSync(path.join(dir, 'api.ts'), renderTemplate('api', { table: info }));
+        fs.writeFileSync(path.join(dir, 'type.ts'), renderTemplate('type', { table: info }));
+
+        console.log(`✓ api/type 已生成: ${info.name}`);
+    }
+}

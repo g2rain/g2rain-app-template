@@ -1,0 +1,405 @@
+<%
+  function uiLabel(col) {
+    let s = String(col?.comment || col?.camelName || '').trim();
+    // 去掉枚举/说明括号，避免 label 过长
+    s = s.replace(/\[.*?\]/g, '');
+    s = s.replace(/（.*?）/g, '');
+    s = s.replace(/\(.*?\)/g, '');
+    s = s.trim();
+
+    // 常见后缀简化
+    if (s.endsWith('标识')) s = s.slice(0, -2) + 'ID';
+    return s || String(col?.camelName || '');
+  }
+%>
+<template>
+  <div class="<%= table.name %>-page">
+    <!-- 查询表单 -->
+    <el-card class="<%= table.name %>-page__search" shadow="never">
+      <!-- 基础查询表单（BaseSelectListDto） -->
+      <QueryForm
+        ref="queryFormRef"
+        v-model="baseQueryForm"
+        @search="handleSearch"
+      >
+        <!-- 业务特定查询字段 -->
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+        <el-form-item label="<%= uiLabel(col) %>">
+          <el-input v-model="queryForm.<%= col.camelName %>" placeholder="请输入<%= uiLabel(col) %>" clearable style="width: 200px" />
+        </el-form-item>
+<% }); -%>
+
+        <!-- 操作按钮 -->
+        <template #actions>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </template>
+      </QueryForm>
+    </el-card>
+
+    <!-- 标题和操作按钮 -->
+    <div class="<%= table.name %>-page__header">
+      <div class="<%= table.name %>-page__title-group">
+        <h2>管理各类<%= table.title %>数据</h2>
+      </div>
+      <el-button type="primary" v-permission="'<%= table.name %>:add'" @click="handleCreate">新增<%= table.title %></el-button>
+    </div>
+
+    <SortableTable
+      :data="tableData"
+      border
+      stripe
+      style="width: 100%"
+      :enable-multi-sort="true"
+      @sort-change="handleSortChange"
+    >
+      <el-table-column prop="id" label="ID" width="120" />
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+      <el-table-column prop="<%= col.camelName %>" label="<%= uiLabel(col) %>" width="<%= col.type === 'string' ? '180' : '140' %>" />
+<% }); -%>
+      <TableColumn prop="createTime" label="创建时间" width="180" :sortable="true" />
+      <TableColumn prop="updateTime" label="更新时间" width="180" :sortable="true" />
+      <el-table-column label="操作" fixed="right" width="280">
+        <template #default="{ row }">
+          <el-button type="primary" link size="small" @click="handleView(row)">明细</el-button>
+          <el-button type="primary" v-permission="'<%= table.name %>:edit'" link size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button type="danger" v-permission="'<%= table.name %>:delete'" link size="small" @click="handleDelete(row)">删除</el-button>
+        </template>
+        <template #header>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>操作</span>
+            <SortManagerButton />
+          </div>
+        </template>
+      </el-table-column>
+    </SortableTable>
+
+    <!-- 分页组件 -->
+    <div class="<%= table.name %>-page__pagination">
+      <el-pagination
+        v-model:current-page="pagination.pageNum"
+        v-model:page-size="pagination.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="pagination.total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handlePageChange"
+      />
+    </div>
+
+    <!-- 新增 / 编辑弹窗 -->
+    <el-dialog
+      v-model="editDialogVisible"
+      :title="isEdit ? '编辑<%= table.title %>' : '新增<%= table.title %>'"
+      width="520px"
+    >
+      <el-form
+        ref="editFormRef"
+        :model="editForm"
+        :rules="editRules"
+        label-width="100px"
+      >
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+        <el-form-item label="<%= uiLabel(col) %>" prop="<%= col.camelName %>">
+          <el-input v-model="editForm.<%= col.camelName %>" placeholder="请输入<%= uiLabel(col) %>" />
+        </el-form-item>
+<% }); -%>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="editDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="submitEdit">保 存</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 明细弹窗 -->
+    <el-dialog v-model="detailDialogVisible" title="<%= table.title %>明细" width="520px">
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="ID">{{ currentRow?.id }}</el-descriptions-item>
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+        <el-descriptions-item label="<%= uiLabel(col) %>">
+          {{ currentRow?.<%= col.camelName %> }}
+        </el-descriptions-item>
+<% }); -%>
+        <el-descriptions-item label="版本号">{{ currentRow?.version }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ currentRow?.createTime }}</el-descriptions-item>
+        <el-descriptions-item label="更新时间">{{ currentRow?.updateTime }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button type="primary" @click="detailDialogVisible = false">关 闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue';
+import type { FormInstance, FormRules } from 'element-plus';
+import { ElMessageBox } from 'element-plus';
+import { <%= table.camelName %>Api } from './api';
+import type { <%= table.camelName %>, <%= table.camelName %>Payload, <%= table.camelName %>Query } from './type';
+import type { BaseSelectListDto, PageSelectListDto } from '@platform/types/api.type';
+
+import { SortableTable, TableColumn, SortManagerButton, QueryForm, showErrorMessage } from '@/components';
+
+const tableData = ref<<%= table.camelName %>[]>([]);
+
+// 基础查询表单（BaseSelectListDto）
+let baseQueryForm = reactive<BaseSelectListDto>({
+  id: undefined,
+  createTime: undefined,
+  updateTime: undefined,
+  sorts: undefined,
+});
+
+// 业务特定查询表单
+const queryForm = reactive({
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+  <%= col.camelName %>: '',
+<% }); -%>
+});
+
+// 组件引用
+const queryFormRef = ref<InstanceType<typeof QueryForm> | null>(null);
+
+// 分页相关状态
+const pagination = reactive({
+  pageNum: 1,
+  pageSize: 10,
+  total: 0,
+});
+
+const editDialogVisible = ref(false);
+const detailDialogVisible = ref(false);
+const isEdit = ref(false);
+const currentRow = ref<<%= table.camelName %> | null>(null);
+
+const editFormRef = ref<FormInstance | null>(null);
+
+const editForm = reactive({
+  id: 0,
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+  <%= col.camelName %>: <% if (col.nullable) { %>''<% } else { %>''<% } %>,
+<% }); -%>
+});
+
+const editRules: FormRules = {
+<% table.businessColumns.filter(col => !col.nullable && !col.isDeleteFlag).forEach(col => { -%>
+  <%= col.camelName %>: [{ required: true, message: '请输入<%= uiLabel(col) %>', trigger: 'blur' }],
+<% }); -%>
+};
+
+const handleCreate = () => {
+  isEdit.value = false;
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+  editForm.<%= col.camelName %> = <% if (col.nullable) { %>''<% } else { %>''<% } %>;
+<% }); -%>
+  editDialogVisible.value = true;
+};
+
+const handleEdit = (row: <%= table.camelName %>) => {
+  isEdit.value = true;
+  editForm.id = row.id;
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+  editForm.<%= col.camelName %> = row.<%= col.camelName %><% if (col.nullable) { %> ?? ''<% } %>;
+<% }); -%>
+  editDialogVisible.value = true;
+};
+
+const handleView = (row: <%= table.camelName %>) => {
+  currentRow.value = { ...row };
+  detailDialogVisible.value = true;
+};
+
+const handleDelete = (row: <%= table.camelName %>) => {
+  ElMessageBox.confirm(`确认删除<%= table.title %>「${row.id}」吗？`, '提示', {
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        await <%= table.camelName %>Api.remove(row.id);
+        // 如果当前页只有一条数据，删除后应该跳转到上一页
+        if (tableData.value.length === 1 && pagination.pageNum > 1) {
+          pagination.pageNum--;
+        }
+        await loadData();
+        ElMessage.success('删除成功');
+      } catch (error: any) {
+        showErrorMessage(error || '删除失败');
+      }
+    })
+    .catch(() => {});
+};
+
+const submitEdit = async () => {
+  if (!editFormRef.value) return;
+  const valid = await editFormRef.value.validate();
+  if (!valid) return;
+
+  const payload: <%= table.camelName %>Payload = {
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+    <%= col.camelName %>: editForm.<%= col.camelName %><% if (col.nullable) { %> || null<% } %>,
+<% }); -%>
+  };
+
+  try {
+    // 编辑模式下，将 id 添加到 payload 中
+    if (isEdit.value) {
+      payload.id = editForm.id;
+    }
+    await <%= table.camelName %>Api.save(payload);
+    ElMessage.success(isEdit.value ? '更新成功' : '新增成功');
+    await loadData();
+    editDialogVisible.value = false;
+  } catch (error: any) {
+    showErrorMessage(error || '保存失败');
+  }
+};
+
+// 处理排序变化
+const handleSortChange = (params: Record<string, string>) => {
+  // 更新 QueryForm 的 sorts 字段
+  if (queryFormRef.value) {
+    queryFormRef.value.updateSorts(params);
+  }
+};
+
+const loadData = async () => {
+  try {
+    // 构建查询条件（query 对象），包含基础查询参数和业务查询参数
+    const query: <%= table.camelName %>Query = {
+      // 基础查询参数（BaseSelectListDto）- 使用 Object.fromEntries 过滤无效值
+      ...Object.fromEntries(
+        Object.entries(baseQueryForm).filter(
+          ([_, v]) => v != null && (!Array.isArray(v) || v.length > 0)
+        )
+      ),
+      // 业务查询字段
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+      ...(queryForm.<%= col.camelName %> ? { <%= col.camelName %>: queryForm.<%= col.camelName %> } : {}),
+<% }); -%>
+    };
+    
+    // 检查 query 对象是否有有效值
+    const hasQuery = Object.values(query).some((value) => {
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return value !== undefined && value !== null && value !== '';
+    });
+    
+    // 构建查询参数，符合 <%= table.camelName %>Query & PageSelectListDto 格式
+    const params: <%= table.camelName %>Query & PageSelectListDto = {
+      // 分页参数
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
+      // 查询条件（直接展开，仅在有效时包含）
+      ...(hasQuery ? query : {}),
+    };
+    
+    const pageData = await <%= table.camelName %>Api.page(params);
+    
+    tableData.value = pageData.records;
+    pagination.total = pageData.total;
+  } catch (error: any) {
+    showErrorMessage(error || '加载列表失败');
+  }
+};
+
+// 查询
+const handleSearch = () => {
+  pagination.pageNum = 1; // 重置到第一页
+  loadData();
+};
+
+// 重置查询条件
+const handleReset = () => {
+  // 重置基础查询表单
+  baseQueryForm.id = undefined;
+  baseQueryForm.createTime = undefined;
+  baseQueryForm.updateTime = undefined;
+  baseQueryForm.sorts = undefined;
+  
+  // 重置业务特定查询表单
+<% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
+  queryForm.<%= col.camelName %> = '';
+<% }); -%>
+  
+  pagination.pageNum = 1; // 重置到第一页
+  loadData();
+};
+
+// 分页大小变化
+const handleSizeChange = (size: number) => {
+  pagination.pageSize = size;
+  pagination.pageNum = 1; // 重置到第一页
+  loadData();
+};
+
+// 页码变化
+const handlePageChange = (page: number) => {
+  pagination.pageNum = page;
+  loadData();
+};
+
+onMounted(() => {
+  loadData();
+});
+</script>
+
+<style scoped>
+.<%= table.name %>-page {
+  padding: 20px;
+  background-color: #f5f7fa;
+  min-height: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.<%= table.name %>-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  margin-top: 0;
+  padding: 16px 20px;
+  background-color: #fff;
+  border-radius: 4px;
+}
+
+.<%= table.name %>-page__title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.<%= table.name %>-page__header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.<%= table.name %>-page__search {
+  margin-bottom: 12px;
+  background-color: #fff;
+}
+
+.<%= table.name %>-page__pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+</style>
+
