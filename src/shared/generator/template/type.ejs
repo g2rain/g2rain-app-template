@@ -9,7 +9,7 @@ import type { BaseSelectListDto, BaseVo } from '@platform/types/api.type';
  */
 export interface <%= table.camelName %> extends BaseVo {
 <% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
-  <%= col.camelName %>: <%= col.type %><% if (col.nullable) { %> | null<% } %>;
+  <%= col.camelName %>: <%= col.type %>;
 <% }); -%>
 }
 
@@ -19,7 +19,7 @@ export interface <%= table.camelName %> extends BaseVo {
 export interface <%= table.camelName %>Payload {
   id?: number; // 更新时传入 ID，新增时不传
 <% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
-  <%= col.camelName %>?: <%= col.type %><% if (col.nullable) { %> | null<% } %>;
+  <%= col.camelName %>?: <%= col.type %>;
 <% }); -%>
 }
 
@@ -31,7 +31,7 @@ export interface <%= table.camelName %>Payload {
 export interface <%= table.camelName %>Query extends BaseSelectListDto {
   // 业务查询字段
 <% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
-  <%= col.camelName %>?: <%= col.type %><% if (col.nullable) { %> | null<% } %>;
+  <%= col.camelName %>?: <%= col.type %>;
 <% }); -%>
 }
 

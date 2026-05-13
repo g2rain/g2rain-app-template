@@ -13,6 +13,8 @@ export interface TableInfo {
     camelName: string;
     routePath: string;
     routeName: string;
+    /** 表级 COMMENT（来自 `) ENGINE=... COMMENT='...'`），无则为 "" */
+    tableComment: string;
     title: string;
     columns: TableColumn[];
     baseColumns: TableColumn[];

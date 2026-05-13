@@ -10,8 +10,7 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_DIR"
 
-PROJECT_NAME="$(node -p "require('./package.json').name")"
-IMAGE="g2rain/${PROJECT_NAME}"
+IMAGE="g2rain/{{PROJECT_NAME}}"
 TAG="latest"
 BUILD_MODE="production"
 

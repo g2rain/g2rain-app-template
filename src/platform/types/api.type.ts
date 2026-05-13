@@ -59,10 +59,10 @@ export interface BaseSelectListDto {
   ids?: number[];
 
   // 更新时间段 [开始时间, 结束时间]，格式：YYYY-MM-DD HH:mm:ss
-  updateTime?: string[];
+  updateTime?: [string, string];
 
   // 创建时间段 [开始时间, 结束时间]，格式：YYYY-MM-DD HH:mm:ss
-  createTime?: string[];
+  createTime?: [string, string];
 
   // 排序字段，格式：["column,direction"]，如 ["id,desc", "createTime,asc"]
   sorts?: string[];

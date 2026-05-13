@@ -5,6 +5,7 @@ export function parseTable(sql: string, tableName: string): TableInfo {
 
     const columns: TableColumn[] = [];
     let inColumns = false;
+    let tableComment = '';
     const normalized = tableName.toLowerCase();
 
     for (const line of lines) {
@@ -19,28 +20,37 @@ export function parseTable(sql: string, tableName: string): TableInfo {
         }
 
         if (inColumns) {
-            // 到达约束/索引或表定义结束时停止
+            if (/^\)\s*ENGINE\b/i.test(line)) {
+                const tc = line.match(/COMMENT\s*=\s*(['"])(.*?)\1/i);
+                tableComment = (tc && tc[2]) || '';
+                break;
+            }
+
+            // 索引 / 约束行：不是列定义，跳过直到 ) ENGINE
             if (
                 line.startsWith('PRIMARY KEY') ||
                 line.startsWith('UNIQUE KEY') ||
                 line.startsWith('UNIQUE INDEX') ||
                 line.startsWith('KEY') ||
                 line.startsWith('INDEX') ||
-                line.startsWith(') ENGINE') ||
-                line.startsWith(');') ||
-                line === ')'
+                line.startsWith('CONSTRAINT') ||
+                line.startsWith('FOREIGN KEY')
             ) {
+                continue;
+            }
+
+            // 无 ENGINE 子句的结束括号（少见）
+            if (line === ')' || line.startsWith(');')) {
                 break;
             }
 
             const match = line.match(
-                // 列名支持可选反引号；类型支持如 VARCHAR(128)、TIMESTAMP 等
-                /^`?(\w+)`?\s+(\w+(?:\([^)]+\))?)\s*(.*?)(?:COMMENT\s+['"](.*?)['"])?\s*,?$/i,
+                /^`(\w+)`\s+(\w+(?:\([^)]+\))?)\s+((?:(?!\s+COMMENT\b).)*?)(?:\s+COMMENT\s+(["'])(.*?)\4)?\s*,?\s*$/i,
             );
 
             if (!match) continue;
 
-            const [, name, sqlType, rest, comment] = match;
+            const [, name, sqlType, rest, , comment] = match;
             const camelName = snakeToCamel(name);
             // 允许 DEFAULT NULL 的列被识别为可空；NOT NULL 明确为不可空
             const upperRest = rest.toUpperCase();
@@ -86,8 +96,9 @@ export function parseTable(sql: string, tableName: string): TableInfo {
         camelName,
         routePath: `/${normalizedTableName}`,
         routeName: camelName,
+        tableComment,
         title: getTitleFromComment(
-            columns.find(c => c.name === 'name')?.comment || normalizedTableName,
+            tableComment || columns.find(c => c.name === 'name')?.comment || normalizedTableName,
         ),
         columns,
         baseColumns,
