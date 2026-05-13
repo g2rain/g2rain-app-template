@@ -13,6 +13,7 @@
     "esModuleInterop": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
+    "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./src/*"],
       "@platform/*": ["./src/platform/*"],

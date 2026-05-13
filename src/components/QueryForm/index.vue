@@ -155,21 +155,19 @@ function onIdChange(v: string | number) {
 /**
  * 时间范围 Hook
  */
-function useTimeRange(
-  field: 'createTime' | 'updateTime'
-) {
+function useTimeRange(field: 'createTime' | 'updateTime') {
   return computed<[string, string] | null>({
     get() {
       const value = props.modelValue[field]
 
-      if (!value) {
+      if (!value || value.length !== 2) {
         return null
       }
 
-      // 返回拷贝，避免直接改 props
-      return [...value]
+      // 返回拷贝，避免直接改 props；保持 [string, string] 元组类型
+      return [value[0], value[1]] as [string, string]
     },
-    set(v) {
+    set(v: [string, string] | null) {
       if (!v) {
         updateField(field, undefined as any)
         return

@@ -19,7 +19,7 @@ export class <%= table.camelName %>Api {
    * @param params 查询参数（可选）
    * @returns <%= table.title %>列表
    */
-  static async list(params?: { <% table.businessColumns.slice(0, 1).forEach(col => { %><%= col.camelName %>?: <%= col.type === 'string' ? 'string' : 'number' %>; <% }); %>page?: number; size?: number }): Promise<<%= table.camelName %>[]> {
+  static async list(params?: <%= table.camelName %>Query): Promise<<%= table.camelName %>[]> {
     const http = getHttpClient('default');
     const res = await http.get<<%= table.camelName %>[]>('<%= table.routePath %>/list', params);
     return res.data || [];
@@ -30,9 +30,7 @@ export class <%= table.camelName %>Api {
    * @param params 查询参数（继承PageSelectListDto，包含基础查询和业务查询条件）
    * @returns 分页数据
    */
-  static async page(
-    params: <%= table.camelName %>Query & PageSelectListDto,
-  ): Promise<PageData<<%= table.camelName %>>> {
+  static async page(params: <%= table.camelName %>Query & PageSelectListDto): Promise<PageData<<%= table.camelName %>>> {
     const http = getHttpClient('default');
     const res = await http.get<PageData<<%= table.camelName %>>>('<%= table.routePath %>/page', params);
     return res.data;

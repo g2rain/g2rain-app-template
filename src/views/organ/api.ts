@@ -11,9 +11,7 @@ export class OrganApi {
    *   1) OrganSelect 传参：{ key?: string; value?: number }
    *   2) 直接传字符串关键字：string
    */
-  static async searchOrgans(
-    params?: { key?: string; value?: number } | string,
-  ): Promise<OrganIdNameMap[]> {
+  static async searchOrgans(params?: { key?: string; value?: number } | string): Promise<OrganIdNameMap[]> {
     const http = getHttpClient('default');
     const organName = typeof params === 'string' ? params : (params?.key ?? '');
     const res = await http.get<OrganIdNameMap[]>('/basis/organ/search', { organName });
