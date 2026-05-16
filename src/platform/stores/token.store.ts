@@ -3,9 +3,7 @@ import type { Token, ApplicationScope } from '@platform/types/http.types';
 import type { Client } from '@/components/http';
 import { jwtVerify } from 'jose';
 import { publicKeyStringToJwk } from '@shared/utils/jwt.util';
-import { isIntegrateMode } from '@platform/apps';
-import { isQianKunMode } from '@shared/utils/mode.util'
-import { isMockEnabled } from '@shared/env';
+import { isIntegrateMode } from '@shared/utils/mode.util';
 
 const STORAGE_KEY = 'g2rain_token';
 
@@ -25,7 +23,7 @@ export const useAccessTokenStore = defineStore('token', {
         return (this.logged = false);
       }
       // mock 模式下，now 设置为 0，token 永不过期
-      const now =  new Date();
+      const now = new Date();
 
       // 2. 检查 token 的过期时间
       try {
@@ -48,7 +46,7 @@ export const useAccessTokenStore = defineStore('token', {
       try {
         const expireAt = new Date(this.token.expireAt * 1000);
         // mock 模式下，now 设置为 0，token 永不过期
-        const now =  new Date();
+        const now = new Date();
         return expireAt > now;
       } catch (error) {
         console.log(error);
@@ -57,39 +55,6 @@ export const useAccessTokenStore = defineStore('token', {
     },
   },
   actions: {
-    ensureMockSession(): boolean {
-      if (!isMockEnabled() || this.isLogin) {
-        return false;
-      }
-
-      const nowSec = Math.floor(Date.now() / 1000);
-      if (!this.client) {
-        this.client = {
-          clientId: 'mock-client',
-          privateKey: {} as any,
-          publicKey: {} as any,
-          isAuthenticated: true,
-        } as Client;
-      }
-
-      if (!this.token) {
-        this.token = {
-          clientId: 'mock-client',
-          clientPublicKey: '',
-          applicationScopes: [],
-          expireAt: nowSec + 24 * 60 * 60,
-          refreshExpireAt: nowSec + 7 * 24 * 60 * 60,
-        } as Token;
-      }
-
-      if (!this.tokenString) {
-        this.tokenString = 'mock-token';
-      }
-      this.logged = true;
-      this.tokenExpired = false;
-      return true;
-    },
-
     async setTokens(tokenString: string, tokenKid: string, iamKeyId: string, publicKey: string) {
       try {
         // 验证 tokenKid 是否匹配
@@ -135,9 +100,9 @@ export const useAccessTokenStore = defineStore('token', {
   persist: isIntegrateMode()
     ? false
     : {
-        key: STORAGE_KEY,
-        storage: localStorage,
-        pick: ['client', 'token', 'tokenString', 'logged', 'tokenExpired'],
-      },
+      key: STORAGE_KEY,
+      storage: localStorage,
+      pick: ['client', 'token', 'tokenString', 'logged', 'tokenExpired'],
+    },
 });
 

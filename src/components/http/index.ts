@@ -5,16 +5,7 @@
  * - 为每个 HttpClientType 维护对应的 HttpClientOptions，并提供更新方法
  * - 具体的初始化与实例工厂逻辑在 `client.ts` 中实现
  */
-
-import type {
-  HttpClient,
-  HttpClientInstance,
-  HttpClientOptions,
-  HttpClientType,
-  ResponseTypeMap,
-  Result,
-  HttpAuthSession,
-} from './types';
+import type { HttpClient, HttpClientInstance, HttpClientOptions, HttpClientType, ResponseTypeMap, Result, HttpAuthSession, EnsureAccessTokenOptions } from './types';
 import { createHttpClient } from './client';
 import { env, getPathWithContextPath } from '@shared/env';
 import { isIntegrateMode } from '@shared/utils/mode.util';
@@ -49,9 +40,7 @@ const clientInstanceMap = new Map<HttpClientType, HttpClientInstance<any>>();
  * 获取指定类型的 HttpClient 实例（单例）
  * @template T HttpClientType
  */
-export function getHttpClient<T extends HttpClientType = 'default'>(
-  type: T = 'default' as T,
-): HttpClient<ResponseTypeMap[T]> {
+export function getHttpClient<T extends HttpClientType = 'default'>(type: T = 'default' as T): HttpClient<ResponseTypeMap[T]> {
   if (!clientInstanceMap.has(type)) {
     const options = httpClientOptionsMap[type] || {};
     clientInstanceMap.set(type, createHttpClient<ResponseTypeMap[T]>(options, type));
@@ -64,10 +53,7 @@ export function getHttpClient<T extends HttpClientType = 'default'>(
  * 覆盖指定类型的 HttpClientOptions，并重置对应单例
  * @template T HttpClientType
  */
-export function setHttpClientOptions<T extends HttpClientType>(
-  type: T,
-  options: HttpClientOptions<ResponseTypeMap[T]>,
-): void {
+export function setHttpClientOptions<T extends HttpClientType>(type: T, options: HttpClientOptions<ResponseTypeMap[T]>): void {
   httpClientOptionsMap[type] = options;
   clientInstanceMap.delete(type);
 }
@@ -76,10 +62,7 @@ export function setHttpClientOptions<T extends HttpClientType>(
  * 合并更新指定类型的 HttpClientOptions，并重置对应单例
  * @template T HttpClientType
  */
-export function updateHttpClientOptions<T extends HttpClientType>(
-  type: T,
-  patch: Partial<HttpClientOptions<ResponseTypeMap[T]>>,
-): void {
+export function updateHttpClientOptions<T extends HttpClientType>(type: T, patch: Partial<HttpClientOptions<ResponseTypeMap[T]>>): void {
   httpClientOptionsMap[type] = {
     ...(httpClientOptionsMap[type] || {}),
     ...patch,
@@ -93,10 +76,7 @@ export function updateHttpClientOptions<T extends HttpClientType>(
  * @param type HttpClient 类型
  * @param baseURL 新的 baseURL
  */
-export function updateHttpBaseURL<T extends HttpClientType>(
-  type: T,
-  baseURL: string,
-): void {
+export function updateHttpBaseURL<T extends HttpClientType>(type: T, baseURL: string): void {
   updateHttpClientOptions(type, { baseURL });
   // 如果实例已存在，立即重新创建
   if (clientInstanceMap.has(type)) {
@@ -113,43 +93,32 @@ export function updateHttpBaseURL<T extends HttpClientType>(
 export function updateHttpBaseURLFromProps(): void {
   let newDefaultBaseURL = getPathWithContextPath('/api');
   let newAuthBaseURL = getPathWithContextPath('');
-  
+
   if (isIntegrateMode()) {
     try {
       const props = (window as any).__QIANKUN_PROPS__ as MicroAppProps | undefined;
       if (props && props.entryOrigin) {
         // 确保 entryOrigin 包含协议（如果缺少，添加当前页面的协议）
-        let entryOrigin = props.entryOrigin;
-        if (!entryOrigin.startsWith('http://') && !entryOrigin.startsWith('https://')) {
-          // 如果 entryOrigin 不包含协议，使用当前页面的协议
-          entryOrigin = `${window.location.protocol}//${entryOrigin}`;
-        }
-        
+        let entryOrigin = new URL(props.entryOrigin, window.location.origin).origin;
         // 使用 activeRule 拼接路径
         // activeRule 如 '/manager'，需要拼接到 entryOrigin 后面
-        const activeRule = props.activeRule || '';
-        // 确保 activeRule 以 / 开头，去掉末尾的 /
-        const normalizedActiveRule = activeRule.startsWith('/') ? activeRule : `/${activeRule}`;
-        const cleanActiveRule = normalizedActiveRule.endsWith('/') ? normalizedActiveRule.slice(0, -1) : normalizedActiveRule;
-        
+        const cleanActiveRule = `/${props.activeRule || ''}`.replace(/\/+/g, '/').replace(/\/$/, '');
         // 拼接 baseURL：entryOrigin + activeRule + /api
         // 使用 URL 对象确保正确拼接，避免相对路径问题
         try {
-          const defaultURL = new URL(`${cleanActiveRule}/api`, entryOrigin);
-          newDefaultBaseURL = defaultURL.toString();
+          newDefaultBaseURL = new URL(`${cleanActiveRule}/api`, entryOrigin).toString();
         } catch {
           // 如果 URL 构造失败，使用字符串拼接（但确保 entryOrigin 以 / 结尾或 cleanActiveRule 以 / 开头）
           newDefaultBaseURL = `${entryOrigin}${cleanActiveRule}/api`.replace(/\/+/g, '/');
         }
-        
+
         try {
-          const authURL = new URL(cleanActiveRule || '/', entryOrigin);
-          newAuthBaseURL = authURL.toString();
+          newAuthBaseURL = new URL(cleanActiveRule || '/', entryOrigin).toString();
         } catch {
           // 如果 URL 构造失败，使用字符串拼接
           newAuthBaseURL = `${entryOrigin}${cleanActiveRule}`.replace(/\/+/g, '/');
         }
-        
+
         console.log('[updateHttpBaseURLFromProps] 集成模式，使用 entry origin 和 activeRule:', {
           entryOrigin: props.entryOrigin,
           normalizedEntryOrigin: entryOrigin,
@@ -165,7 +134,7 @@ export function updateHttpBaseURLFromProps(): void {
       console.warn('[updateHttpBaseURLFromProps] 获取 entry origin 失败:', error);
     }
   }
-  
+
   updateHttpBaseURL('default', newDefaultBaseURL);
   updateHttpBaseURL('auth', newAuthBaseURL);
 }
@@ -177,6 +146,7 @@ export type {
   HttpClientType,
   Result,
   HttpAuthSession,
+  EnsureAccessTokenOptions,
 };
 
 // 导出 DPoP 签名相关功能

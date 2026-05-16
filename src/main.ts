@@ -4,14 +4,13 @@ import 'element-plus/dist/index.css';
 import App from './App.vue';
 import { initRouter, updateRouter } from '@runtime/router';
 import { setupStore } from '@platform/stores/setup';
-import { isIntegrateMode, registerQiankunLifecycle } from '@platform/apps';
+import { isIntegrateMode } from '@shared/utils/mode.util';
+import { registerQiankunLifecycle } from '@platform/apps';
 import { initApplicationResources, initRoutesFromResources, setupTokenExpiredWatcher } from '@runtime/boot';
 import { permissionPlugin } from '@/components/permission';
 import { env } from '@shared/env';
 import { sso } from '@runtime/auth';
-
-let app: VueApp | null = null;
-let router: ReturnType<typeof initRouter> | null = null;
+import { getShell, STANDALONE_SHELL_KEY } from '@/runtime/micro-shells';
 
 /**
  * 获取挂载容器
@@ -50,14 +49,21 @@ function getMountContainer(container?: HTMLElement): HTMLElement {
  * 在集成模式下，应该在 token 初始化之后调用
  * 在独立模式下，在 render 函数中调用
  */
-export async function initRouterFromResources(): Promise<void> {
+export async function initRouterFromResources(instanceKey: string = STANDALONE_SHELL_KEY): Promise<void> {
   if (!env.VITE_APPLICATION_CODE) {
     throw new Error('VITE_APPLICATION_CODE 未配置，无法加载路由。请在环境变量中配置应用编码。');
   }
 
+  const shell = getShell(instanceKey);
+
   try {
     if ((import.meta.env as any).DEV) {
-      console.log('[initRouterFromResources] 初始化应用资源，applicationCode:', env.VITE_APPLICATION_CODE);
+      console.log(
+        '[initRouterFromResources] 初始化应用资源，applicationCode:',
+        env.VITE_APPLICATION_CODE,
+        'shell:',
+        instanceKey,
+      );
     }
 
     // 初始化应用资源（从后端加载页面、页面元素、API端点）
@@ -90,14 +96,14 @@ export async function initRouterFromResources(): Promise<void> {
     }
 
     // 如果 router 已存在（集成模式下），更新路由而不是创建新的
-    if (router) {
-      updateRouter(resourceRoutes);
+    if (shell.router) {
+      updateRouter(shell.router, resourceRoutes);
       if ((import.meta.env as any).DEV) {
         console.log('[initRouterFromResources] 路由已更新');
       }
     } else {
       // 如果 router 不存在（独立模式下），创建新的路由
-      router = initRouter(resourceRoutes);
+      shell.router = initRouter(resourceRoutes);
       if ((import.meta.env as any).DEV) {
         console.log('[initRouterFromResources] 路由初始化完成');
       }
@@ -111,13 +117,13 @@ export async function initRouterFromResources(): Promise<void> {
 /**
  * 处理路由首次跳转
  */
-async function handleInitialRoute(initialRoute?: string): Promise<void> {
+async function handleInitialRoute(initialRoute: string | undefined, instanceKey: string): Promise<void> {
+  const shell = getShell(instanceKey);
+  const router = shell.router;
   if (!router) {
     return;
   }
 
-  // 等待应用挂载和路由初始化完成
-  // await new Promise(resolve => setTimeout(resolve, 100));
   await router.isReady();
 
   const currentRoute = router.currentRoute.value;
@@ -128,6 +134,7 @@ async function handleInitialRoute(initialRoute?: string): Promise<void> {
       path: currentRoute.path,
       matched: matchedCount,
       initialRoute,
+      instanceKey,
     });
   }
 
@@ -161,10 +168,8 @@ async function handleInitialRoute(initialRoute?: string): Promise<void> {
           if ((import.meta.env as any).DEV) {
             console.log('[handleInitialRoute] 已执行路由跳转修复');
           }
-        } else {
-          if ((import.meta.env as any).DEV) {
-            console.warn('[handleInitialRoute] 未找到根路径路由');
-          }
+        } else if ((import.meta.env as any).DEV) {
+          console.warn('[handleInitialRoute] 未找到根路径路由');
         }
       } catch (err) {
         console.error('[handleInitialRoute] 路由跳转修复失败:', err);
@@ -178,15 +183,15 @@ async function handleInitialRoute(initialRoute?: string): Promise<void> {
  * 在集成模式下，只创建应用和挂载，不初始化路由（路由初始化由 adapter.qiankun.ts 负责）
  * 在独立模式下，完成完整的初始化包括路由
  */
-async function render(container?: HTMLElement, initialRoute?: string): Promise<{ app: VueApp; mountContainer: HTMLElement }> {
+async function render(container?: HTMLElement, initialRoute?: string, instanceKey?: string): Promise<{ app: VueApp; mountContainer: HTMLElement }> {
   // 获取挂载容器
   const mountContainer = getMountContainer(container);
 
   // 创建应用实例
-  app = createApp(App);
-  setupStore(app);
-  app.use(ElementPlus);
-  app.use(permissionPlugin);
+  const vueApp = createApp(App);
+  setupStore(vueApp);
+  vueApp.use(ElementPlus);
+  vueApp.use(permissionPlugin);
   // 初始化 tokenExpired 监听（根据运行模式触发不同处理）
   setupTokenExpiredWatcher();
 
@@ -206,29 +211,20 @@ async function render(container?: HTMLElement, initialRoute?: string): Promise<{
       console.log('[render] 检测到 SSO 回调路径，先初始化系统路由');
     }
 
-    // 先使用空资源路由初始化，只包含系统路由（homeRoutes + authRoutes）
-    router = initRouter([]);
-    app.use(router);
-    app.mount(mountContainer);
+    const shell = getShell(STANDALONE_SHELL_KEY);
+    shell.app = vueApp;
+    shell.router = initRouter([]);
+    vueApp.use(shell.router);
+    vueApp.mount(mountContainer);
 
-    // 等待应用挂载完成
-    // await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // initApplicationResources 会启动 watch 监听登录状态，并在登录后自动初始化资源和更新路由
-    // 这里只需要等待它完成即可
     try {
       await initApplicationResources();
 
-      // 资源初始化完成后，跳转到目标页面
-      if (router) {
+      if (shell.router) {
         const returnUrl = localStorage.getItem('return_url') || '/';
         localStorage.removeItem('return_url');
-
-        // 等待路由更新完成
-        // await new Promise((resolve) => setTimeout(resolve, 100));
-
-        await router.replace(returnUrl);
-        await router.isReady();
+        await shell.router.replace(returnUrl);
+        await shell.router.isReady();
 
         if ((import.meta.env as any).DEV) {
           console.log('[render] 已跳转到目标页面:', returnUrl);
@@ -236,64 +232,63 @@ async function render(container?: HTMLElement, initialRoute?: string): Promise<{
       }
     } catch (err) {
       console.error('[render] SSO 回调后资源加载失败:', err);
-      // 即使失败也继续，避免阻塞
     }
 
-    return { app, mountContainer };
+    return { app: vueApp, mountContainer };
   }
 
   // 集成模式（qiankun）：只创建应用和挂载，不初始化路由
   // 路由初始化由 adapter.qiankun.ts 在 token 初始化之后调用
   // 只要 render 收到 container，就一定来自 qiankun mount（集成模式）
   if (container || isIntegrateMode()) {
+    const key = instanceKey ?? STANDALONE_SHELL_KEY;
     if ((import.meta.env as any).DEV) {
-      console.log('[render] 集成模式，只创建应用和挂载，路由初始化将在 token 初始化后完成');
+      console.log('[render] 集成模式 shell:', key, '路由初始化将在 token 初始化后完成');
     }
 
     // 先使用空路由初始化，只包含系统路由
-    router = initRouter([]);
-    app.use(router);
-    // app.mount(mountContainer);
-
-    // 路由初始化将在 adapter.qiankun.ts 的 mount 方法中，token 初始化之后完成
-    // 返回必要工具，让 mount 生命周期钩子接管后续
-    return { app, mountContainer };
+    const shell = getShell(key);
+    shell.app = vueApp;
+    shell.router = initRouter([]);
+    vueApp.use(shell.router);
+    return { app: vueApp, mountContainer };
   }
 
   // 独立运行模式：完成完整的初始化包括路由
   try {
+    const shell = getShell(STANDALONE_SHELL_KEY);
+    shell.app = vueApp;
     // 初始化路由（从资源接口加载）
-    await initRouterFromResources();
-
-    app.use(router!);
-
+    await initRouterFromResources(STANDALONE_SHELL_KEY);
+    vueApp.use(shell.router!);
     // 挂载应用
-    app.mount(mountContainer);
-
+    vueApp.mount(mountContainer);
     // 处理路由首次跳转
-    await handleInitialRoute(initialRoute);
+    await handleInitialRoute(initialRoute, STANDALONE_SHELL_KEY);
   } catch (error) {
     console.error('[render] 独立模式初始化失败:', error);
     throw error;
   }
 
-  return { app, mountContainer };
+  return { app: vueApp, mountContainer };
 }
 
 /**
  * qiankun 生命周期函数
  */
 registerQiankunLifecycle({
-  render,
-  getApp: () => app,
-  setApp: (value) => {
-    app = value;
+  render: (container, initialRoute, instanceKey) => render(container, initialRoute, instanceKey),
+  getApp: (instanceKey: string) => getShell(instanceKey).app,
+  setApp: (instanceKey: string, value: VueApp | null) => {
+    getShell(instanceKey).app = value;
   },
-  getRouter: () => router,
-  setRouter: (value) => {
-    router = value;
+  getRouter: (instanceKey: string) => getShell(instanceKey).router,
+  setRouter: (instanceKey: string, value: ReturnType<typeof initRouter> | null) => {
+    getShell(instanceKey).router = value;
   },
 });
+
+export { STANDALONE_SHELL_KEY, getShell };
 
 // 独立运行模式：直接渲染
 if (!isIntegrateMode()) {
@@ -308,12 +303,12 @@ if (!isIntegrateMode()) {
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      render().catch(err => {
+      render(undefined, undefined, STANDALONE_SHELL_KEY).catch(err => {
         console.error('[main] 独立运行模式渲染失败:', err);
       });
     });
   } else {
-    render().catch(err => {
+    render(undefined, undefined, STANDALONE_SHELL_KEY).catch(err => {
       console.error('[main] 独立运行模式渲染失败:', err);
     });
   }

@@ -4,8 +4,7 @@
  */
 
 import type { EventAdapter } from '@/components/micro-app';
-import { QiankunSubAppEventAdapter } from './adapter.qiankun';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { getQiankunSubAppEventAdapter } from './adapter.qiankun';
 
 /**
  * 当前使用的适配器实例
@@ -17,11 +16,8 @@ let currentAdapter: EventAdapter | null = null;
  * 根据当前运行模式自动选择适配器实现
  */
 function createAdapter(): EventAdapter {
-  // 目前只支持 qiankun 实现
-  // 未来可以扩展支持其他微前端框架（如 single-spa、Module Federation 等）
-  const adapter = new QiankunSubAppEventAdapter();
-  adapter.initEventListeners();
-  return adapter;
+  // 与 registerQiankunLifecycle 共用单例；监听与 initMicroAppMessageHandlers 仅在生命周期注册时初始化，避免重复 addEventListener 与「未找到处理器」误报
+  return getQiankunSubAppEventAdapter();
 }
 
 /**

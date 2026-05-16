@@ -23,9 +23,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { sso } from '@runtime/auth';
-import { getRouterInstance } from '@runtime/router';
 import { useAccessTokenStore } from '@platform/stores';
-import { isIntegrateMode } from '@platform/apps';
 
 const isLoading = ref(true);
 const error = ref<string | null>(null);
@@ -64,19 +62,7 @@ const processCallback = async () => {
 
     // 根据运行模式进行路由跳转
     try {
-      if (isIntegrateMode()) {
-        // 集成模式下，使用 getRouterInstance 获取路由实例
-        const g2rainRouter = getRouterInstance();
-        if (g2rainRouter) {
-          await g2rainRouter.push(returnUrl);
-        } else {
-          throw new Error('路由实例未初始化');
-        }
-      } else {
-        // 独立模式下，使用 Vue Router 实例（已注册到 Vue 应用）
-        // 使用 replace 而不是 push，避免在历史记录中留下回调页面
         await vueRouter.replace(returnUrl);
-      }
     } catch (routerError) {
       console.error('[SsoCallback] 路由跳转失败:', routerError);
       // 如果路由跳转失败，尝试使用 window.location

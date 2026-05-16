@@ -1,26 +1,10 @@
 import { createRouter, createMemoryHistory, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import type { Router } from 'vue-router';
 import type { App } from 'vue';
 import { env } from '@shared/env';
-import { isIntegrateMode } from '@platform/apps';
+import { isIntegrateMode } from '@shared/utils/mode.util';
 import { authRoutes } from './auth.router';
 import { homeRoutes } from './home.router';
-
-let routerInstance: ReturnType<typeof createRouter> | null = null;
-
-/**
- * 重置路由实例（用于 qiankun unmount 时清理）
- */
-export function resetRouter() {
-  routerInstance = null;
-}
-
-/**
- * 获取当前路由实例
- * @returns 当前路由实例，如果不存在则返回 null
- */
-export function getRouterInstance() {
-  return routerInstance;
-}
 
 /**
  * 创建路由
@@ -50,7 +34,7 @@ export function createAppRouter(resourceRoutes: RouteRecordRaw[]) {
   }
 
   // 创建新路由（每次 mount 都创建新实例，避免路由冲突）
-  routerInstance = createRouter({
+  const router = createRouter({
     history: isIntegrateMode() ? createMemoryHistory(base) : createWebHistory(base),
     routes: allRoutes,
     // 添加 catch-all 路由，避免路由未匹配时出错
@@ -61,7 +45,7 @@ export function createAppRouter(resourceRoutes: RouteRecordRaw[]) {
   if ((import.meta.env as any).DEV) {
     console.log(
       '[router] 路由注册完成，所有路由:',
-      routerInstance.getRoutes().map((r) => ({
+      router.getRoutes().map((r) => ({
         path: r.path,
         name: r.name,
         matched: r.path === '/' ? '根路径' : '其他路径',
@@ -69,7 +53,7 @@ export function createAppRouter(resourceRoutes: RouteRecordRaw[]) {
     );
   }
 
-  return routerInstance;
+  return router;
 }
 
 /**
@@ -86,8 +70,8 @@ export function initRouter(resourceRoutes: RouteRecordRaw[]) {
  * 根据新的资源路由更新路由配置（只更新资源路由，系统路由保持不变）
  * @param resourceRoutes 从资源接口加载的路由（必需）
  */
-export function updateRouter(resourceRoutes: RouteRecordRaw[]) {
-  if (!routerInstance) {
+export function updateRouter(router: Router | null | undefined, resourceRoutes: RouteRecordRaw[]) {
+  if (!router) {
     if ((import.meta.env as any).DEV) {
       console.warn('[router] 路由实例不存在，无法更新路由');
     }
@@ -101,7 +85,7 @@ export function updateRouter(resourceRoutes: RouteRecordRaw[]) {
   ]);
 
   // 获取当前所有路由名称（排除系统路由）
-  const currentRouteNames = routerInstance
+  const currentRouteNames = router
     .getRoutes()
     .map((route: RouteRecordRaw) => route.name)
     .filter((name): name is string => Boolean(name) && !systemRouteNames.has(name as string));
@@ -114,7 +98,7 @@ export function updateRouter(resourceRoutes: RouteRecordRaw[]) {
   // 移除不在新资源路由列表中的旧资源路由
   currentRouteNames.forEach((name: string) => {
     if (!newResourceRouteNames.has(name)) {
-      routerInstance!.removeRoute(name);
+      router.removeRoute(name);
     }
   });
 
@@ -122,22 +106,20 @@ export function updateRouter(resourceRoutes: RouteRecordRaw[]) {
   resourceRoutes.forEach((route: RouteRecordRaw) => {
     if (route.name) {
       // 检查路由是否已存在
-      const existingRoute = routerInstance!
-        .getRoutes()
-        .find((r: RouteRecordRaw) => r.name === route.name);
+      const existingRoute = router.getRoutes().find((r: RouteRecordRaw) => r.name === route.name);
       if (existingRoute) {
         // 如果路由已存在，先移除再添加（更新路由）
-        routerInstance!.removeRoute(route.name as string);
+        router.removeRoute(route.name as string);
       }
-      routerInstance!.addRoute(route);
+      router.addRoute(route);
     } else {
       // 没有 name 的路由直接添加
-      routerInstance!.addRoute(route);
+      router.addRoute(route);
     }
   });
 
   if ((import.meta.env as any).DEV) {
-    console.log('[router] 路由已更新，当前路由数量:', routerInstance.getRoutes().length);
+    console.log('[router] 路由已更新，当前路由数量:', router.getRoutes().length);
     console.log(
       '[router] 更新的资源路由:',
       resourceRoutes.map((r) => ({ path: r.path, name: r.name })),

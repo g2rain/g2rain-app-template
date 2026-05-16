@@ -3,12 +3,7 @@
  * 负责加载和管理应用资源（页面、页面元素、API端点）
  */
 
-import type {
-  ApplicationResources,
-  ResourcePage,
-  ResourcePageElement,
-  ResourceApiEndpoint,
-} from './types';
+import type { ApplicationResources, ResourcePage, ResourcePageElement, ResourceApiEndpoint } from './types';
 import { getHttpClient } from '@/components/http';
 
 import { env } from '@shared/env';
