@@ -83,15 +83,7 @@ export const generateDpopHeader = function (publicKey: JWK, clientId: string): D
  * @param jti - JWT ID
  * @returns DPoP 令牌字符串
  */
-export const dpopSign = async function (
-  url: string,
-  method: string,
-  params: unknown,
-  data: unknown,
-  applicationCode: string,
-  client: Client | null,
-  jti: string,
-): Promise<string> {
+export const dpopSign = async function (url: string, method: string, params: unknown, data: unknown, applicationCode: string, client: Client | null, jti: string): Promise<string> {
   if (client == null) throw new Error('client is required');
 
   // 1. 处理 params 参数（在此函数内部进行规范化处理，避免调用方修改原始格式）
@@ -182,20 +174,17 @@ async function processData(data: unknown): Promise<ArrayBuffer> {
  * 计算PHA值 (Payload Hash Algorithm)
  */
 function calculatePha(params: string, data: ArrayBuffer): string {
+  let dataHash = sha256(data);
   console.log('params:', params);
-  console.log('data:', data);
-  const inputString = params + '\n' + sha256(data);
+  console.log('sha256(data):', dataHash);
+  const inputString = params + '\n' + dataHash;
   return sha256(inputString);
 }
 
 /**
  * 生成Dpop签名
  */
-export async function generateDpop(
-  header: DpopHeader,
-  payload: DpopPayload,
-  privateKey: JWK,
-): Promise<string> {
+export async function generateDpop(header: DpopHeader, payload: DpopPayload, privateKey: JWK): Promise<string> {
   try {
     return await new SignJWT(payload)
       .setProtectedHeader(header)

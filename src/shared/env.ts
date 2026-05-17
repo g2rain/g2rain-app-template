@@ -57,8 +57,7 @@ export type SharedEnv = {
  */
 export const env: SharedEnv = new Proxy({} as SharedEnv, {
   get(_target, prop: string | symbol) {
-    if (prop === 'VITE_APPLICATION_CODE')
-      return getEnvVar('VITE_APPLICATION_CODE', 'g2rain-app');
+    if (prop === 'VITE_APPLICATION_CODE') return getEnvVar('VITE_APPLICATION_CODE', 'g2rain-manager-app');
     if (prop === 'VITE_CONTEXT_PATH') return getEnvVar('VITE_CONTEXT_PATH', '/');
     if (prop === 'VITE_TOKEN_END_POINT') return getEnvVar('VITE_TOKEN_END_POINT', '/auth/token');
     if (prop === 'VITE_IAM_BACKEND_ORIGIN') return getEnvVar('VITE_IAM_BACKEND_ORIGIN', '');
@@ -76,21 +75,16 @@ export const env: SharedEnv = new Proxy({} as SharedEnv, {
 }) as SharedEnv;
 
 export function getPathWithContextPath(subPath: string): string {
-  const contextPath = env.VITE_CONTEXT_PATH;
+  const contextPath = getEnvVar('VITE_CONTEXT_PATH', '/');
+  const base = `/${contextPath}/`.replace(/\/+/g, '/');
 
   if (!subPath) {
-    return contextPath;
+    return base;
   }
 
-  if (contextPath.endsWith('/') && subPath.startsWith('/')) {
-    return contextPath + subPath.substring(1);
-  }
-
-  if (!contextPath.endsWith('/') && !subPath.startsWith('/')) {
-    return contextPath + '/' + subPath;
-  }
-
-  return contextPath + subPath;
+  // 若 subPath 以 / 开头, 直接拼接 subPath(此时 base 去掉尾斜杠)
+  // 否则直接字符串相加, 完全避免了 subPath.slice(1) 产生的新字符串内存分配
+  return (subPath.startsWith('/') ? base.slice(0, -1) : base) + subPath;
 }
 
 export function isMockEnabled(): boolean {

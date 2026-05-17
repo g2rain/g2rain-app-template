@@ -4,23 +4,11 @@
  * 原先位于 `index.ts` 中的具体实现迁移至此，
  * 方便 `index.ts` 只承担导出和实例选择的职责。
  */
-
-import axios, {
-  type AxiosInstance,
-  type AxiosRequestConfig,
-  type AxiosAdapter,
-} from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosAdapter } from 'axios';
 import { setupInterceptors, type InterceptorOptions } from './interceptors';
 import { applyFormSerializer } from './request-body';
 import { getMockResponse } from './mock-utils';
-import type {
-  HttpClient,
-  HttpClientInstance,
-  HttpClientOptions,
-  DefaultResponseType,
-  HttpClientType,
-  Result,
-} from './types';
+import type { HttpClient, HttpClientInstance, HttpClientOptions, DefaultResponseType, HttpClientType, Result } from './types';
 import { defaultParamsSerializer } from './params-serializer';
 
 /**
@@ -68,10 +56,7 @@ function createAxiosInstance(baseURL?: string): AxiosInstance {
  * 按配置创建 HttpClient 实例
  * @template ResponseType 响应类型
  */
-export function createHttpClient<ResponseType = DefaultResponseType>(
-  options: HttpClientOptions<ResponseType> = {},
-  type: HttpClientType = 'default',
-): HttpClientInstance<ResponseType> {
+export function createHttpClient<ResponseType = DefaultResponseType>(options: HttpClientOptions<ResponseType> = {}, type: HttpClientType = 'default'): HttpClientInstance<ResponseType> {
   const {
     baseURL,
     withAuth = true,
@@ -79,6 +64,7 @@ export function createHttpClient<ResponseType = DefaultResponseType>(
     isDirectResponse = false,
     authSessionProvider,
     authErrorHandler,
+    ensureAccessToken,
   } = options;
 
   const axiosInstance = createAxiosInstance(baseURL);
@@ -87,6 +73,7 @@ export function createHttpClient<ResponseType = DefaultResponseType>(
   const interceptorOptions: InterceptorOptions = {
     authSessionProvider,
     authErrorHandler,
+    ensureAccessToken,
     withAuth,
   };
 
@@ -98,21 +85,18 @@ export function createHttpClient<ResponseType = DefaultResponseType>(
       // 处理请求体序列化（表单等）
       const finalConfig = await applyFormSerializer(config);
       const response = await axiosInstance.request(finalConfig);
-      
+
       // 根据配置决定返回格式
       // 如果 isDirectResponse 为 true，直接返回数据（不包装 Result）
       // 否则返回 Result 格式
       if (isDirectResponse) {
         return response.data as ResponseType extends Result<any> ? Result<T> : T;
       }
+
       return response.data as ResponseType extends Result<any> ? Result<T> : T;
     },
 
-    async get<T = any>(
-      url: string,
-      params?: any,
-      config?: Partial<AxiosRequestConfig>,
-    ): Promise<ResponseType extends Result<any> ? Result<T> : T> {
+    async get<T = any>(url: string, params?: any, config?: Partial<AxiosRequestConfig>): Promise<ResponseType extends Result<any> ? Result<T> : T> {
       return this.request<T>({
         url,
         method: 'GET',
@@ -121,11 +105,7 @@ export function createHttpClient<ResponseType = DefaultResponseType>(
       });
     },
 
-    async post<T = any>(
-      url: string,
-      data?: any,
-      config?: Partial<AxiosRequestConfig>,
-    ): Promise<ResponseType extends Result<any> ? Result<T> : T> {
+    async post<T = any>(url: string, data?: any, config?: Partial<AxiosRequestConfig>): Promise<ResponseType extends Result<any> ? Result<T> : T> {
       return this.request<T>({
         url,
         method: 'POST',
@@ -134,11 +114,7 @@ export function createHttpClient<ResponseType = DefaultResponseType>(
       });
     },
 
-    async put<T = any>(
-      url: string,
-      data?: any,
-      config?: Partial<AxiosRequestConfig>,
-    ): Promise<ResponseType extends Result<any> ? Result<T> : T> {
+    async put<T = any>(url: string, data?: any, config?: Partial<AxiosRequestConfig>): Promise<ResponseType extends Result<any> ? Result<T> : T> {
       return this.request<T>({
         url,
         method: 'PUT',
@@ -147,11 +123,7 @@ export function createHttpClient<ResponseType = DefaultResponseType>(
       });
     },
 
-    async delete<T = any>(
-      url: string,
-      params?: any,
-      config?: Partial<AxiosRequestConfig>,
-    ): Promise<ResponseType extends Result<any> ? Result<T> : T> {
+    async delete<T = any>(url: string, params?: any, config?: Partial<AxiosRequestConfig>): Promise<ResponseType extends Result<any> ? Result<T> : T> {
       return this.request<T>({
         url,
         method: 'DELETE',
@@ -160,11 +132,7 @@ export function createHttpClient<ResponseType = DefaultResponseType>(
       });
     },
 
-    async patch<T = any>(
-      url: string,
-      data?: any,
-      config?: Partial<AxiosRequestConfig>,
-    ): Promise<ResponseType extends Result<any> ? Result<T> : T> {
+    async patch<T = any>(url: string, data?: any, config?: Partial<AxiosRequestConfig>): Promise<ResponseType extends Result<any> ? Result<T> : T> {
       return this.request<T>({
         url,
         method: 'PATCH',

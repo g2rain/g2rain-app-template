@@ -97,9 +97,7 @@ export function appendParamsFromSource(sp: URLSearchParams, source: unknown): vo
  */
 export function defaultParamsSerializer(params: unknown): string {
   const sp = new URLSearchParams();
-
   appendParamsFromSource(sp, params);
-
   if (![...sp.keys()].length) {
     return '';
   }

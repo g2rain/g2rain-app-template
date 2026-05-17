@@ -6,11 +6,9 @@
 import { watch, type WatchStopHandle } from 'vue';
 import { resourceManager } from './resource';
 import { initRoutesFromResources } from './router';
-import type { ApplicationResources } from './types';
 import { useAccessTokenStore } from '@platform/stores';
 import { env } from '@shared/env';
-import { isIntegrateMode } from '@platform/apps';
-import { emitTokenInvalid } from '@platform/apps';
+import { isIntegrateMode } from '@shared/utils/mode.util';
 import { sso } from '@runtime/auth';
 import { initHttp } from '@runtime/http';
 
@@ -18,31 +16,43 @@ export * from './types';
 export * from './resource';
 export * from './router';
 
+/** 同一份子应用 JS 内 HTTP 引导只做一次 */
+let httpBootstrapDone = false;
+/** tokenExpired 监听全局只挂一条；多 Tab 用引用计数配对 mount/unmount */
+let tokenExpiredWatchStop: WatchStopHandle | null = null;
+let tokenExpiredWatcherRefCount = 0;
+
 /**
  * 监听 tokenExpired 状态变化
- * - 集成模式：当 token 标记为过期（tokenExpired: false -> true）时，通过事件通知主应用
- * - 独立运行模式：当 token 过期时，触发刷新 token
+ * - 集成模式：通知主应用刷新由 {@link sso.ensureAccessToken} 统一 emit，此处不重复发事件
+ * - 独立运行模式：tokenExpired 变为 true 时调用 requestRefreshToken
+ *
+ * qiankun 多实例：每次 render/mount 调用一次；watch 与 initHttp 仅首次生效，避免重复监听。
+ * 与 {@link teardownTokenExpiredWatcher} 成对（在 qiankun unmount 中调用）。
  */
 export function setupTokenExpiredWatcher(): void {
-  const accessTokenStore = useAccessTokenStore();
-  const mockedSessionInitialized = accessTokenStore.ensureMockSession();
-  if (mockedSessionInitialized) {
-    if ((import.meta.env as any).DEV) {
-      console.log('[boot] mock 会话已初始化，跳过后续 tokenExpired 初始化流程');
-    }
+  if (!httpBootstrapDone) {
+    initHttp();
+    httpBootstrapDone = true;
+  }
+
+  tokenExpiredWatcherRefCount++;
+
+  if (tokenExpiredWatchStop != null) {
     return;
   }
 
-  // 初始化 HTTP 组件（认证会话 + 认证异常处理），需在所有 HTTP 请求之前
-  initHttp();
+  const accessTokenStore = useAccessTokenStore();
 
   // 启动时如果已经是 tokenExpired = true，则立即按当前模式处理一次
   if (accessTokenStore.tokenExpired) {
     if (isIntegrateMode()) {
       if ((import.meta.env as any).DEV) {
-        console.log('[boot] 启动时检测到 tokenExpired=true，集成模式通知主应用 TOKEN_INVALID 事件');
+        console.log('[boot] 启动时检测到 tokenExpired=true，集成模式走 ensureAccessToken');
       }
-      emitTokenInvalid(env.VITE_APPLICATION_CODE);
+      void sso.ensureAccessToken({ force: true }).catch((error) => {
+        console.error('[boot] 启动时 ensureAccessToken 失败:', error);
+      });
     } else {
       if ((import.meta.env as any).DEV) {
         console.log('[boot] 启动时检测到 tokenExpired=true，独立模式调用 requestRefreshToken 刷新 token');
@@ -53,36 +63,43 @@ export function setupTokenExpiredWatcher(): void {
     }
   }
 
-  watch(
+  tokenExpiredWatchStop = watch(
     () => accessTokenStore.tokenExpired,
     async (tokenExpired, prevTokenExpired) => {
-      // 仅在状态发生变化时处理
       if (tokenExpired === prevTokenExpired) return;
+      // 集成模式由 ensureAccessToken 统一发事件，watch 不介入
+      if (isIntegrateMode()) return;
+      // 仅处理 false -> true（标记为过期）
+      if (prevTokenExpired || !tokenExpired) return;
 
-      // 这里只在从 false 变为 true（标记为过期）时处理
-      if (!prevTokenExpired && tokenExpired) {
-        if (isIntegrateMode()) {
-          // 子应用通知 token 失效事件，主应用收到后会发起统一的 SSO / 刷新流程（与 MICRO_APP_EVENT.TOKEN_INVALID 描述保持一致）
-          if ((import.meta.env as any).DEV) {
-            console.log('[boot] tokenExpired 变为 true，发送 MICRO_APP_EVENT.TOKEN_INVALID 给主应用');
-          }
+      if ((import.meta.env as any).DEV) {
+        console.log('[boot] tokenExpired 变为 true，独立模式调用 requestRefreshToken 刷新 token');
+      }
 
-          emitTokenInvalid(env.VITE_APPLICATION_CODE);
-        } else {
-          // 独立运行模式：直接调用刷新 token 接口
-          if ((import.meta.env as any).DEV) {
-            console.log('[boot] tokenExpired 变为 true，独立模式调用 requestRefreshToken 刷新 token');
-          }
-          try {
-            await sso.requestRefreshToken();
-          } catch (error) {
-            console.error('[boot] 刷新 token 失败:', error);
-          }
-        }
+      try {
+        await sso.requestRefreshToken();
+      } catch (error) {
+        console.error('[boot] 刷新 token 失败:', error);
       }
     },
     { immediate: false },
   );
+}
+
+/**
+ * 与 setupTokenExpiredWatcher 成对：最后一个 qiankun 实例卸载时停止 watch。
+ * 独立运行模式无需调用（页面级生命周期）。
+ */
+export function teardownTokenExpiredWatcher(): void {
+  tokenExpiredWatcherRefCount = Math.max(0, tokenExpiredWatcherRefCount - 1);
+  if (tokenExpiredWatcherRefCount > 0) {
+    return;
+  }
+
+  console.log('[boot] 最后一个实例卸载，停止 tokenExpired 监听');
+
+  tokenExpiredWatchStop?.();
+  tokenExpiredWatchStop = null;
 }
 
 /**
@@ -127,13 +144,13 @@ export async function initApplicationResources(): Promise<void> {
           await resourceManager.init();
 
           // 获取路由实例并更新路由
-          const { getRouterInstance } = await import('@runtime/router');
-          const router = getRouterInstance();
+          const { getShell, STANDALONE_SHELL_KEY } = await import('@/runtime/micro-shells');
+          const { updateRouter } = await import('@runtime/router');
+          const router = getShell(STANDALONE_SHELL_KEY).router;
 
           if (router) {
             const resourceRoutes = await initRoutesFromResources();
-            const { updateRouter } = await import('@runtime/router');
-            updateRouter(resourceRoutes);
+            updateRouter(router, resourceRoutes);
 
             if ((import.meta.env as any).DEV) {
               console.log('[initApplicationResources] 资源初始化完成，路由已更新');

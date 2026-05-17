@@ -46,10 +46,7 @@ export class MockManager {
    * @param config 请求配置
    * @returns Mock 数据，如果不存在则返回 null
    */
-  async getMockData(
-    url: string,
-    config: AxiosRequestConfig
-  ): Promise<MockData | null> {
+  async getMockData(url: string, config: AxiosRequestConfig): Promise<MockData | null> {
     const normalizedUrl = this.normalizeUrl(url);
     // 精确匹配
     if (this.mockDataMap[normalizedUrl]) {

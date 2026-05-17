@@ -6,7 +6,7 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { loadingManager, shouldShowLoading } from '@/components/loading';
 import { shouldUseMock } from '../mock-utils';
-import type { HttpAuthSession } from '../types';
+import type { HttpAuthSession, EnsureAccessTokenOptions } from '../types';
 
 /**
  * 拦截器配置选项
@@ -22,10 +22,12 @@ export interface InterceptorOptions {
    * 统一的认证异常处理回调
    * - 例如：NO_LOGIN / TOKEN_REFRESH_FAILED 时触发 SSO 跳转
    */
-  authErrorHandler?: (
-    reason: 'NO_LOGIN' | 'TOKEN_REFRESH_FAILED',
-    error: unknown,
-  ) => Promise<void> | void;
+  authErrorHandler?: (reason: 'NO_LOGIN' | 'TOKEN_REFRESH_FAILED', error: unknown) => Promise<void> | void;
+
+  /**
+   * 由 runtime 注入：刷新并写回 store（单飞）；`opts.force` 见 {@link EnsureAccessTokenOptions}
+   */
+  ensureAccessToken?: (opts?: EnsureAccessTokenOptions) => Promise<void>;
 
   /** 是否启用认证相关拦截器（默认 true） */
   withAuth?: boolean;
