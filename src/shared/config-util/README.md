@@ -53,10 +53,12 @@ npm run build:config
 
 ```json
 {
+  "serviceName": "dict-service",
+  "routePrefix": "/basis",
   "apiName": "查询",
-  "apiUrl": "/dict",
-  "requestMethod": "GET",
-  "apiTag": "字典配置"
+  "method": "GET",
+  "path": "/dict/list",
+  "status": "ENABLED"
 }
 ```
 

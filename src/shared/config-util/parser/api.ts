@@ -6,6 +6,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { ResourcePage, ResourceApiEndpoint } from '@runtime/boot/types';
 
+function splitRoutePrefixAndPath(apiPath: string): { routePrefix: string; path: string } {
+  const trimmed = apiPath.trim();
+  if (!trimmed || trimmed === '/') {
+    return { routePrefix: '', path: '/' };
+  }
+  const slash = trimmed.indexOf('/', 1);
+  if (slash === -1) {
+    return { routePrefix: trimmed, path: '/' };
+  }
+  return { routePrefix: trimmed.slice(0, slash), path: trimmed.slice(slash) };
+}
+
 /**
  * 从 API 路径提取 API 标签（分类）
  * 例如: '/dict' -> '字典管理'
@@ -90,13 +102,16 @@ function parseApiFile(filePath: string, pageCode: string, pageName: string): Res
       }
 
       const apiName = getApiName(method, apiPath);
-      const apiTag = getApiTag(apiPath, pageName);
+      const serviceName = getApiTag(apiPath, pageName);
+      const { routePrefix, path } = splitRoutePrefixAndPath(apiPath);
 
       endpoints.push({
+        serviceName,
+        routePrefix,
         apiName,
-        apiUrl: apiPath,
-        requestMethod: method,
-        apiTag,
+        method,
+        path,
+        status: 'ENABLED',
       });
     }
   }

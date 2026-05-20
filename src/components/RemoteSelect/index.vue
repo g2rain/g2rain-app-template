@@ -5,8 +5,10 @@
     :clearable="clearable"
     :disabled="disabled"
     :loading="loading"
+    :suffix-icon="ArrowDown"
     filterable
     remote
+    remote-show-suffix
     :remote-method="handleRemoteSearch"
     reserve-keyword
     :default-first-option="false"
@@ -26,6 +28,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
+import { ArrowDown } from '@element-plus/icons-vue';
 import type { FetchDataFunction, RemoteSelectOption } from './types';
 
 // 导出类型供外部使用
@@ -77,21 +80,35 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 const selectedValue = ref<number | string | null | undefined>(props.modelValue);
+/** 下拉展示用的选项 */
 const options = ref<RemoteSelectOption[]>([]);
+/** 空关键字预取得到的默认列表（搜索前应恢复为此） */
+const defaultOptions = ref<RemoteSelectOption[]>([]);
+/** 已加载过的选项池（预取 + 远程结果），用于输入时先本地过滤，减少重复请求 */
+const sourceOptions = ref<RemoteSelectOption[]>([]);
 const loading = ref(false);
 /** 当前下拉会话内是否输入过搜索词（用于区分「用户清空搜索」与「选中后组件触发的空串 remote」） */
 const userTypedSearch = ref(false);
 /** 最近一次 remote 请求对应的规范化关键字（与下方 params 一致）；打开下拉时重置，用于去重重复 remote */
 const lastRemoteQuery = ref<string | null>(null);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+const prefetching = ref(false);
+
+const mergeOptions = (base: RemoteSelectOption[], incoming: RemoteSelectOption[]): RemoteSelectOption[] => {
+  const map = new Map<string | number, RemoteSelectOption>();
+  for (const item of base) {
+    map.set(getValue(item), item);
+  }
+  for (const item of incoming) {
+    map.set(getValue(item), item);
+  }
+  return Array.from(map.values());
+};
 
 /**
  * 防抖函数
  */
-const debounce = <T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): ((...args: Parameters<T>) => void) => {
+const debounce = <T extends (...args: any[]) => any>(func: T, delay: number): ((...args: Parameters<T>) => void) => {
   return (...args: Parameters<T>) => {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -116,6 +133,47 @@ const getLabel = (item: RemoteSelectOption): string => {
   return item[props.labelKey] || String(item[props.valueKey] || '');
 };
 
+const rememberOptions = (incoming: RemoteSelectOption[]) => {
+  if (!incoming.length) return;
+  sourceOptions.value = mergeOptions(sourceOptions.value, incoming);
+};
+
+/** 写入预取/空关键字默认列表，并同步到下拉展示 */
+const applyDefaultOptions = (list: RemoteSelectOption[]) => {
+  defaultOptions.value = [...list];
+  rememberOptions(list);
+  options.value = [...list];
+  lastRemoteQuery.value = '';
+};
+
+/** 清空搜索词、点 ×、表单重置或再次打开下拉时，恢复为默认列表 */
+const restoreDefaultOptions = () => {
+  if (defaultOptions.value.length > 0) {
+    options.value = [...defaultOptions.value];
+  } else if (props.prefetchOnOpen && sourceOptions.value.length > 0) {
+    options.value = [...sourceOptions.value];
+  }
+  lastRemoteQuery.value = '';
+  userTypedSearch.value = false;
+};
+
+const filterLocalByKeyword = (keyword: string): RemoteSelectOption[] => {
+  const trimmed = keyword.trim();
+  if (!trimmed) {
+    return [...sourceOptions.value];
+  }
+  if (isNumeric(trimmed)) {
+    const num = Number(trimmed);
+    return sourceOptions.value.filter(
+      (item) => getValue(item) === num || String(getValue(item)) === trimmed,
+    );
+  }
+  const key = trimmed.toLowerCase();
+  return sourceOptions.value.filter((item) =>
+    String(getLabel(item)).toLowerCase().includes(key),
+  );
+};
+
 /**
  * 判断字符串是否为纯数字
  */
@@ -136,11 +194,11 @@ const handleRemoteSearch = debounce(async (query: string) => {
     if (!props.prefetchOnOpen) {
       options.value = [];
       lastRemoteQuery.value = null;
+      userTypedSearch.value = false;
       return;
     }
-    if (!userTypedSearch.value) {
-      return;
-    }
+    restoreDefaultOptions();
+    return;
   }
 
   // 与上次成功请求的规范化关键字相同则跳过（去重组件重复触发的 remote）
@@ -148,17 +206,30 @@ const handleRemoteSearch = debounce(async (query: string) => {
     return;
   }
 
+  // 关键字能命中已加载选项时，仅本地过滤，不请求后端
+  if (sourceOptions.value.length > 0) {
+    const local = filterLocalByKeyword(trimmed);
+    if (local.length > 0) {
+      options.value = local;
+      lastRemoteQuery.value = trimmed;
+      return;
+    }
+  }
+
   loading.value = true;
   try {
+    // 判断输入是否为数字，构建查询参数
     const params =
       trimmed === ''
         ? {}
         : isNumeric(trimmed)
-          ? { value: Number(trimmed) }
-          : { key: trimmed };
+          ? { value: Number(trimmed) } // 数字时使用 value
+          : { key: trimmed }; // 字符串时使用 key
 
     const data = await props.fetchData(params);
-    options.value = data || [];
+    const list = data || [];
+    rememberOptions(list);
+    options.value = list;
     lastRemoteQuery.value = trimmed;
   } catch (error) {
     console.error('RemoteSelect fetchData error:', error);
@@ -172,20 +243,41 @@ const handleVisibleChange = async (visible: boolean) => {
   if (visible) {
     userTypedSearch.value = false;
     lastRemoteQuery.value = null;
+    if (props.prefetchOnOpen && defaultOptions.value.length > 0) {
+      options.value = [...defaultOptions.value];
+    }
   }
   if (!visible || !props.prefetchOnOpen) return;
-  if (options.value.length > 0) return;
+  // 打开下拉时预取一次空关键字数据（避免用户必须先输入才出现选项）
+  if (defaultOptions.value.length > 0 || prefetching.value) return;
 
   loading.value = true;
+  prefetching.value = true;
   try {
     const data = await props.fetchData({});
-    options.value = data || [];
-    lastRemoteQuery.value = '';
+    applyDefaultOptions(data || []);
   } catch (error) {
     console.error('RemoteSelect prefetchOnOpen error:', error);
     options.value = [];
   } finally {
     loading.value = false;
+    prefetching.value = false;
+  }
+};
+
+const prefetchDefaultOptions = async () => {
+  if (!props.prefetchOnOpen || defaultOptions.value.length > 0 || prefetching.value) return;
+  loading.value = true;
+  prefetching.value = true;
+  try {
+    const data = await props.fetchData({});
+    applyDefaultOptions(data || []);
+  } catch (error) {
+    console.error('RemoteSelect prefetchDefaultOptions error:', error);
+    options.value = [];
+  } finally {
+    loading.value = false;
+    prefetching.value = false;
   }
 };
 
@@ -205,10 +297,11 @@ const loadInitialOption = async () => {
       : { key: String(selectedValue.value) };
     
     const data = await props.fetchData(params);
-    options.value = data || [];
+    const list = data || [];
+    rememberOptions(list);
+    options.value = mergeOptions(options.value, list);
   } catch (error) {
     console.error('RemoteSelect loadInitialOption error:', error);
-    options.value = [];
   } finally {
     loading.value = false;
   }
@@ -226,21 +319,25 @@ const handleChange = (value: number | string | null | undefined) => {
  * 处理清空
  */
 const handleClear = () => {
-  options.value = [];
-  lastRemoteQuery.value = null;
+  restoreDefaultOptions();
   emit('clear');
 };
 
 // 监听 modelValue 变化
 watch(
   () => props.modelValue,
-  (newValue) => {
+  (newValue, oldValue) => {
     selectedValue.value = newValue;
     if (newValue !== null && newValue !== undefined) {
       const found = options.value.find(item => getValue(item) === newValue);
       if (!found) {
         loadInitialOption();
       }
+    } else if (
+      oldValue !== undefined
+      && (newValue === null || newValue === undefined)
+    ) {
+      restoreDefaultOptions();
     }
   },
   { immediate: true }
@@ -248,6 +345,7 @@ watch(
 
 // 组件挂载时，如果有初始值，加载对应的选项
 onMounted(() => {
+  prefetchDefaultOptions();
   if (selectedValue.value !== null && selectedValue.value !== undefined) {
     loadInitialOption();
   }

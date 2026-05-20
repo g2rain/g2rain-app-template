@@ -5,10 +5,6 @@
 
 import type { ApiPermissionProvider, PageElementPermissionProvider, PageElementStatus } from './types';
 
-function isMockMode(): boolean {
-  return String((import.meta.env as Record<string, unknown>).VITE_MOCK_ENABLED) === 'true';
-}
-
 /**
  * 页面元素权限控制
  * 用于控制页面内按钮、操作等元素的显示和可用性
@@ -29,9 +25,6 @@ export class PageElementPermission {
    * @returns 是否有权限
    */
   static has(elementCode: string): boolean {
-    if (isMockMode()) {
-      return true;
-    }
     return this.provider?.hasPageElementPermission(elementCode) ?? false;
   }
 
@@ -41,9 +34,6 @@ export class PageElementPermission {
    * @returns 元素状态：'visible' | 'enabled' | undefined（不存在）
    */
   static getStatus(elementCode: string): PageElementStatus | undefined {
-    if (isMockMode()) {
-      return 'ENABLED';
-    }
     return this.provider?.getPageElementStatus(elementCode);
   }
 
@@ -55,7 +45,7 @@ export class PageElementPermission {
   static isEnabled(elementCode: string): boolean {
     const status = this.getStatus(elementCode);
     return status === 'ENABLED';
-      // return true;
+    // return true;
   }
 
   /**
@@ -72,9 +62,9 @@ export class PageElementPermission {
    * Vue 指令：v-permission
    * 用法：v-permission="'elementCode'"
    * 根据 pageElementStatus 控制元素的显示和可用性：
-   * - visible: 显示但不可点击（disabled）
-   * - enabled: 显示且可点击（enabled）
-   * - undefined: 不显示（隐藏）
+   * - VISIBLE: 显示但不可点击（disabled / 置灰）
+   * - ENABLED: 显示且可点击
+   * - undefined: 按钮等隐藏；el-switch 仍显示但置灰
    */
   static directive = {
     mounted(el: HTMLElement, binding: { value: string }) {
@@ -92,41 +82,51 @@ export class PageElementPermission {
    */
   private static applyPermission(el: HTMLElement, elementCode: string): void {
     const status = PageElementPermission.getStatus(elementCode);
-    
+
+    const isElButton =
+      el.classList.contains('el-button') ||
+      el.getAttribute('data-component') === 'el-button' ||
+      el.tagName === 'BUTTON';
+
+    /** el-switch：无权限 / VISIBLE 均展示但置灰，仅 ENABLED 可操作 */
+    const isElSwitch = el.classList.contains('el-switch');
+
+    if (isElSwitch) {
+      el.style.display = '';
+      el.style.pointerEvents = '';
+      el.style.opacity = '';
+      el.style.cursor = '';
+      if (status === 'ENABLED') {
+        el.removeAttribute('disabled');
+        el.classList.remove('is-disabled');
+      } else {
+        el.setAttribute('disabled', 'disabled');
+        el.classList.add('is-disabled');
+      }
+      return;
+    }
+
     if (!status) {
-      // 元素不存在，隐藏
       el.style.display = 'none';
       return;
     }
 
-    // 元素存在，显示并根据状态设置可用性
     el.style.display = '';
 
-    // 检查是否是 Element Plus 按钮组件（通过 class 或 data 属性判断）
-    const isElButton = el.classList.contains('el-button') || 
-                       el.getAttribute('data-component') === 'el-button' ||
-                       el.tagName === 'BUTTON';
-
     if (isElButton) {
-      // 对于 Element Plus 按钮，使用 disabled 属性
-      // Element Plus 按钮会响应 disabled 属性
       if (status === 'ENABLED') {
         el.removeAttribute('disabled');
-        // 移除 disabled class（如果 Element Plus 添加了）
         el.classList.remove('is-disabled');
       } else {
-        // status === 'visible'
         el.setAttribute('disabled', 'disabled');
         el.classList.add('is-disabled');
       }
     } else {
-      // 对于其他元素，使用 CSS pointer-events 和 opacity
       if (status === 'VISIBLE') {
         el.style.pointerEvents = 'none';
         el.style.opacity = '0.6';
         el.style.cursor = 'not-allowed';
       } else {
-        // status === 'enabled'
         el.style.pointerEvents = '';
         el.style.opacity = '';
         el.style.cursor = '';
@@ -169,9 +169,6 @@ export class ApiPermission {
    * @returns 是否有权限
    */
   static has(apiUrl: string, requestMethod: string): boolean {
-    if (isMockMode()) {
-      return true;
-    }
     return this.provider?.hasApiPermission(apiUrl, requestMethod) ?? false;
   }
 
