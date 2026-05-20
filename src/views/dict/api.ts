@@ -14,6 +14,14 @@ import './mock';
 
 const LOCALIZED_OPTIONS_PATH = '/infra/dictionary_item/localized_options';
 
+/** 将 BOOLEAN_FLAG 等字典 code 转为 boolean（与业务页、DictText 回显一致） */
+export function parseDictCodeAsBoolean(code: string): boolean | undefined {
+  const normalized = String(code).trim().toLowerCase();
+  if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'n'].includes(normalized)) return false;
+  return undefined;
+}
+
 /** DictSelect / DictText / loadByUsageCode 统一入参 */
 export type DictSelectParams = {
   /** 按 name 模糊搜索 */
@@ -145,9 +153,21 @@ export class DictItemApi {
     return items.filter((item) => String(item.name ?? '').toLowerCase().includes(key));
   }
 
-  private static filterByCode(items: RemoteSelectOption[], code: string): RemoteSelectOption[] {
+  /**
+   * 按 code 在已加载列表中匹配（含 boolean 语义：查询 code 为 "true" 时可匹配字典项 code 为 "1" 等）
+   */
+  private static matchByCode(items: RemoteSelectOption[], code: string): RemoteSelectOption[] {
     const target = code.trim();
-    return items.filter((item) => String(item.code ?? '') === target);
+    const direct = items.filter((item) => String(item.code ?? '') === target);
+    if (direct.length) return direct;
+
+    const queryAsBool = parseDictCodeAsBoolean(target);
+    if (queryAsBool !== undefined) {
+      return items.filter(
+        (item) => parseDictCodeAsBoolean(String(item.code ?? '')) === queryAsBool,
+      );
+    }
+    return [];
   }
 
   /** 给 DictSelect / DictText 使用的 apiMethod */
@@ -162,7 +182,7 @@ export class DictItemApi {
       const items = await DictItemApi.loadByUsageCode(usageCode);
 
       if (code && !key) {
-        const matched = DictItemApi.filterByCode(items, code);
+        const matched = DictItemApi.matchByCode(items, code);
         if (matched.length) return matched;
         return DictItemApi.fetchLocalizedOptions({ usageCode, code });
       }

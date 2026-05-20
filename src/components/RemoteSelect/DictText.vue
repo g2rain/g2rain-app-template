@@ -4,6 +4,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { parseDictCodeAsBoolean } from '@/views/dict/api';
 import type { RemoteSelectOption } from './types';
 
 interface Props {
@@ -45,15 +46,26 @@ const displayText = computed(() => {
 });
 
 const loadLabel = async () => {
-  const value = String(props.value ?? '').trim();
-  if (!value) {
+  const raw = props.value;
+  if (raw === null || raw === undefined || raw === '') {
     label.value = '';
     return;
   }
 
+  const usageCode = props.usageCode?.trim();
+
   try {
-    const usageCode = props.usageCode?.trim();
-    // 回显按 code 精确查询；后端 DictionaryItemSelectDto 使用 code，而非 key
+    // 布尔字段（如 canIntegrate）：只拉 usageCode 全量并在内存匹配，避免 code=true 与字典 code=1 不一致导致二次请求
+    if (typeof raw === 'boolean' && usageCode) {
+      const options = await props.apiMethod({ usageCode });
+      const matched = options.find(
+        (item) => parseDictCodeAsBoolean(String(item[props.valueKey] ?? item.code ?? '')) === raw,
+      );
+      label.value = matched ? String(matched[props.labelKey] ?? raw) : String(raw);
+      return;
+    }
+
+    const value = String(raw).trim();
     const options = await props.apiMethod({
       code: value,
       ...(usageCode ? { usageCode } : {}),
@@ -62,7 +74,7 @@ const loadLabel = async () => {
     label.value = matched ? String(matched[props.labelKey] || value) : value;
   } catch (error) {
     console.error('DictText loadLabel error:', error);
-    label.value = value;
+    label.value = String(raw);
   }
 };
 
