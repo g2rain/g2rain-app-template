@@ -8,7 +8,7 @@ import { useAccessTokenStore } from '@platform/stores';
 import { fetchIamKeyId, fetchIamPublicKey, dpopSign, getHttpClient, HttpClient, type Result, type EnsureAccessTokenOptions } from '@/components/http';
 import { refreshBarrier } from '@/components/http/refresh-barrier';
 import { emitTokenInvalid } from '@platform/apps';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { isQiankunRuntime } from '@shared/utils/mode.util';
 import type { AxiosRequestConfig } from 'axios';
 import { watch } from 'vue';
 import { Generator } from '@shared/utils/random.util';
@@ -156,7 +156,7 @@ class SSOService {
 
     const run = (async () => {
       const barrier = refreshBarrier.waitForRefresh();
-      if (isIntegrateMode()) {
+      if (isQiankunRuntime()) {
         // 必须先同步通知主应用，再 await 屏障；仅依赖 watch 异步触发 emit 会导致死等
         emitTokenInvalid(env.VITE_APPLICATION_CODE);
         if (!store.tokenExpired) {

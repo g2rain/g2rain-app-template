@@ -4,7 +4,8 @@ import 'element-plus/dist/index.css';
 import App from './App.vue';
 import { initRouter, updateRouter } from '@runtime/router';
 import { setupStore } from '@platform/stores/setup';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { isAloneMode, isQiankunRuntime } from '@shared/utils/mode.util';
+import { redirectToMainShellGatewayIfNeeded } from '@shared/utils/shell-gateway.util';
 import { registerQiankunLifecycle } from '@platform/apps';
 import { initApplicationResources, initRoutesFromResources, setupTokenExpiredWatcher } from '@runtime/boot';
 import { permissionPlugin } from '@/components/permission';
@@ -240,7 +241,7 @@ async function render(container?: HTMLElement, initialRoute?: string, instanceKe
   // 集成模式（qiankun）：只创建应用和挂载，不初始化路由
   // 路由初始化由 adapter.qiankun.ts 在 token 初始化之后调用
   // 只要 render 收到 container，就一定来自 qiankun mount（集成模式）
-  if (container || isIntegrateMode()) {
+  if (container || isQiankunRuntime()) {
     const key = instanceKey ?? STANDALONE_SHELL_KEY;
     if ((import.meta.env as any).DEV) {
       console.log('[render] 集成模式 shell:', key, '路由初始化将在 token 初始化后完成');
@@ -290,26 +291,29 @@ registerQiankunLifecycle({
 
 export { STANDALONE_SHELL_KEY, getShell };
 
-// 独立运行模式：直接渲染
-if (!isIntegrateMode()) {
+// 集成意图直链：跳转 main-shell 网关，不启动子应用
+if (redirectToMainShellGatewayIfNeeded()) {
+  // location.replace 已发起，等待卸载
+} else if (isAloneMode()) {
+  // 独立运行模式：直接渲染
   if (!env.VITE_APPLICATION_CODE) {
     console.error('[main] 独立运行模式，VITE_APPLICATION_CODE 未配置，无法加载路由');
     throw new Error('VITE_APPLICATION_CODE 未配置，请在环境变量中配置应用编码');
   }
 
   if ((import.meta.env as any).DEV) {
-    console.log('[main] 独立运行模式，应用编码:', env.VITE_APPLICATION_CODE);
+    console.log('[main] 独立运行模式 (mode=alone)，应用编码:', env.VITE_APPLICATION_CODE);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      render(undefined, undefined, STANDALONE_SHELL_KEY).catch(err => {
-        console.error('[main] 独立运行模式渲染失败:', err);
-      });
-    });
-  } else {
-    render(undefined, undefined, STANDALONE_SHELL_KEY).catch(err => {
+  const runStandalone = () => {
+    render(undefined, undefined, STANDALONE_SHELL_KEY).catch((err) => {
       console.error('[main] 独立运行模式渲染失败:', err);
     });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runStandalone);
+  } else {
+    runStandalone();
   }
 }

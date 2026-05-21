@@ -2,7 +2,7 @@ import { createRouter, createMemoryHistory, createWebHistory, type RouteRecordRa
 import type { Router } from 'vue-router';
 import type { App } from 'vue';
 import { env } from '@shared/env';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { isAloneMode, isQiankunRuntime } from '@shared/utils/mode.util';
 import { authRoutes } from './auth.router';
 import { homeRoutes } from './home.router';
 
@@ -14,13 +14,16 @@ export function createAppRouter(resourceRoutes: RouteRecordRaw[]) {
   // 合并系统路由和资源路由
   // 独立模式：首页路由 + 认证路由 + 资源路由
   // 集成模式：首页路由 + 资源路由（认证路由由主应用处理）
-  const allRoutes: RouteRecordRaw[] = isIntegrateMode()
-    ? [...homeRoutes, ...resourceRoutes] // 集成模式：首页路由 + 资源路由
-    : [...homeRoutes, ...authRoutes, ...resourceRoutes]; // 独立模式：首页路由 + 认证路由 + 资源路由
+  const allRoutes: RouteRecordRaw[] = isQiankunRuntime()
+    ? [...homeRoutes, ...resourceRoutes] // qiankun：首页路由 + 资源路由
+    : [...homeRoutes, ...authRoutes, ...resourceRoutes]; // 独立：含认证路由
 
   if ((import.meta.env as any).DEV) {
     console.log('[router] 创建路由，使用资源路由');
-    console.log('[router] 运行模式:', isIntegrateMode() ? '集成模式' : '独立运行');
+    console.log(
+      '[router] 运行模式:',
+      isQiankunRuntime() ? 'qiankun 集成' : isAloneMode() ? '独立 (alone)' : '独立',
+    );
     console.log(
       '[router] 加载的路由:',
       allRoutes.map((r) => ({ path: r.path, name: r.name })),
@@ -35,7 +38,7 @@ export function createAppRouter(resourceRoutes: RouteRecordRaw[]) {
 
   // 创建新路由（每次 mount 都创建新实例，避免路由冲突）
   const router = createRouter({
-    history: isIntegrateMode() ? createMemoryHistory(base) : createWebHistory(base),
+    history: isQiankunRuntime() ? createMemoryHistory(base) : createWebHistory(base),
     routes: allRoutes,
     // 添加 catch-all 路由，避免路由未匹配时出错
     strict: false,
@@ -81,7 +84,7 @@ export function updateRouter(router: Router | null | undefined, resourceRoutes: 
   // 获取系统路由名称（这些路由不应该被移除）
   const systemRouteNames = new Set([
     ...homeRoutes.map((r) => r.name).filter(Boolean),
-    ...(isIntegrateMode() ? [] : authRoutes.map((r) => r.name).filter(Boolean)),
+    ...(isQiankunRuntime() ? [] : authRoutes.map((r) => r.name).filter(Boolean)),
   ]);
 
   // 获取当前所有路由名称（排除系统路由）

@@ -8,7 +8,7 @@ import { resourceManager } from './resource';
 import { initRoutesFromResources } from './router';
 import { useAccessTokenStore } from '@platform/stores';
 import { env } from '@shared/env';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { isQiankunRuntime } from '@shared/utils/mode.util';
 import { sso } from '@runtime/auth';
 import { initHttp } from '@runtime/http';
 
@@ -46,7 +46,7 @@ export function setupTokenExpiredWatcher(): void {
 
   // 启动时如果已经是 tokenExpired = true，则立即按当前模式处理一次
   if (accessTokenStore.tokenExpired) {
-    if (isIntegrateMode()) {
+    if (isQiankunRuntime()) {
       if ((import.meta.env as any).DEV) {
         console.log('[boot] 启动时检测到 tokenExpired=true，集成模式走 ensureAccessToken');
       }
@@ -68,7 +68,7 @@ export function setupTokenExpiredWatcher(): void {
     async (tokenExpired, prevTokenExpired) => {
       if (tokenExpired === prevTokenExpired) return;
       // 集成模式由 ensureAccessToken 统一发事件，watch 不介入
-      if (isIntegrateMode()) return;
+      if (isQiankunRuntime()) return;
       // 仅处理 false -> true（标记为过期）
       if (prevTokenExpired || !tokenExpired) return;
 

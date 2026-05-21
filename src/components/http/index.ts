@@ -8,7 +8,7 @@
 import type { HttpClient, HttpClientInstance, HttpClientOptions, HttpClientType, ResponseTypeMap, Result, HttpAuthSession, EnsureAccessTokenOptions } from './types';
 import { createHttpClient } from './client';
 import { env, getPathWithContextPath } from '@shared/env';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { isQiankunRuntime } from '@shared/utils/mode.util';
 import type { MicroAppProps } from '@platform/apps/types';
 
 /**
@@ -94,7 +94,7 @@ export function updateHttpBaseURLFromProps(): void {
   let newDefaultBaseURL = getPathWithContextPath('/api');
   let newAuthBaseURL = getPathWithContextPath('');
 
-  if (isIntegrateMode()) {
+  if (isQiankunRuntime()) {
     try {
       const props = (window as any).__QIANKUN_PROPS__ as MicroAppProps | undefined;
       if (props && props.entryOrigin) {

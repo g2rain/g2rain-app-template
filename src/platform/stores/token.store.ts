@@ -3,7 +3,7 @@ import type { Token, ApplicationScope } from '@platform/types/http.types';
 import type { Client } from '@/components/http';
 import { jwtVerify } from 'jose';
 import { publicKeyStringToJwk } from '@shared/utils/jwt.util';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { isQiankunRuntime } from '@shared/utils/mode.util';
 
 const STORAGE_KEY = 'g2rain_token';
 
@@ -97,7 +97,7 @@ export const useAccessTokenStore = defineStore('token', {
     },
   },
   // 持久化配置：子应用不进行 token 持久化（token 由主应用管理）
-  persist: isIntegrateMode()
+  persist: isQiankunRuntime()
     ? false
     : {
       key: STORAGE_KEY,
