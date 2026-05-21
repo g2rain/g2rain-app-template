@@ -295,7 +295,6 @@ export { STANDALONE_SHELL_KEY, getShell };
 if (redirectToMainShellGatewayIfNeeded()) {
   // location.replace 已发起，等待卸载
 } else if (isAloneMode()) {
-  // 独立运行模式：直接渲染
   if (!env.VITE_APPLICATION_CODE) {
     console.error('[main] 独立运行模式，VITE_APPLICATION_CODE 未配置，无法加载路由');
     throw new Error('VITE_APPLICATION_CODE 未配置，请在环境变量中配置应用编码');
