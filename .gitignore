@@ -1,5 +1,9 @@
 node_modules
 dist
+
+# vue-tsc 勿将编译产物写入 src
+src/**/*.js
+src/**/*.js.map
 Thumbs.db
 .DS_Store
 .vscode

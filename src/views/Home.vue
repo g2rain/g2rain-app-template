@@ -3,13 +3,31 @@
     <el-card class="home-card">
       <template #header>
         <div class="card-header">
-          <h2>欢迎使用子应用（模板）</h2>
-          <el-tag :type="isMock ? 'warning' : 'success'" effect="dark">
-            {{ isMock ? 'Mock 模式' : '生产模式' }}
-          </el-tag>
+          <h2>{{ $t('TEMPLATE_HOME_WELCOME', '欢迎使用子应用（模板）') }}</h2>
+          <div class="card-header-actions">
+            <el-select
+              v-if="showLocaleSelect"
+              v-model="selectedLocaleCode"
+              placeholder="选择语言"
+              filterable
+              class="locale-select"
+              :disabled="!localeStore.initialized || localeStore.options.length === 0"
+              :loading="!localeStore.initialized"
+            >
+              <el-option
+                v-for="item in localeStore.options"
+                :key="item.code"
+                :label="item.name"
+                :value="item.code"
+              />
+            </el-select>
+            <el-tag :type="isMock ? 'warning' : 'success'" effect="dark">
+              {{ isMock ? 'Mock 模式' : '生产模式' }}
+            </el-tag>
+          </div>
         </div>
       </template>
-      
+
       <el-alert
         v-if="isMock"
         title="当前使用 Mock 数据"
@@ -23,11 +41,13 @@
           <p>如需使用真实 API，请在 <code>.env</code> 文件中设置 <code>VITE_USE_MOCK=false</code></p>
         </template>
       </el-alert>
-      
-      <p>这是子应用的默认首页。</p>
+
+      <p>{{ $t('TEMPLATE_HOME_DESC', '这是子应用的默认首页。') }}</p>
+      <el-button type="primary" link @click="showDemoMessage">
+        {{ $t('TEMPLATE_HOME_DEMO_BTN', '演示国际化提示') }}
+      </el-button>
       <el-divider />
-      
-      <!-- 自动展示的路由入口 -->
+
       <div v-if="homeRoutes.length > 0" class="routes-section">
         <h3>功能入口</h3>
         <div class="routes-grid">
@@ -48,7 +68,7 @@
           </el-card>
         </div>
       </div>
-      
+
       <div v-else class="empty-routes">
         <el-empty description="暂无可用功能入口" :image-size="100" />
       </div>
@@ -60,18 +80,33 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { Document } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import { isMockEnabled } from '@shared/env';
+import { isAloneMode } from '@shared/utils/mode.util';
+import { useLocaleStore } from '@platform/stores';
+import { t } from '@platform/i18n';
 import { getHomeRoutes } from './route-map';
 
 const router = useRouter();
 const isMock = isMockEnabled();
+const localeStore = useLocaleStore();
+const showLocaleSelect = isAloneMode();
 
-// 自动采集需要在 Home 展示的路由
+const selectedLocaleCode = computed({
+  get: () => localeStore.currentCode,
+  set: (code: string) => {
+    void localeStore.setCurrentCode(code);
+  },
+});
+
 const homeRoutes = computed(() => getHomeRoutes());
 
-// 跳转到指定路由
 const goToRoute = (path: string) => {
   router.push(path);
+};
+
+const showDemoMessage = () => {
+  ElMessage.success(t('TEMPLATE_HOME_DEMO_SUCCESS', '操作成功'));
 };
 </script>
 
@@ -91,10 +126,22 @@ const goToRoute = (path: string) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
 .card-header h2 {
   margin: 0;
+}
+
+.card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.locale-select {
+  width: 150px;
 }
 
 .mock-alert {
@@ -181,4 +228,3 @@ const goToRoute = (path: string) => {
   padding: 40px 0;
 }
 </style>
-

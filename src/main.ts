@@ -4,6 +4,8 @@ import 'element-plus/dist/index.css';
 import App from './App.vue';
 import { initRouter, updateRouter } from '@runtime/router';
 import { setupStore } from '@platform/stores/setup';
+import { i18n } from '@platform/i18n';
+import { localeBoot } from '@runtime/boot/locale.boot';
 import { isAloneMode, isQiankunRuntime } from '@shared/utils/mode.util';
 import { redirectToMainShellGatewayIfNeeded } from '@shared/utils/shell-gateway.util';
 import { registerQiankunLifecycle } from '@platform/apps';
@@ -191,8 +193,10 @@ async function render(container?: HTMLElement, initialRoute?: string, instanceKe
   // 创建应用实例
   const vueApp = createApp(App);
   setupStore(vueApp);
+  vueApp.use(i18n);
   vueApp.use(ElementPlus);
   vueApp.use(permissionPlugin);
+  localeBoot.start();
   // 初始化 tokenExpired 监听（根据运行模式触发不同处理）
   setupTokenExpiredWatcher();
 

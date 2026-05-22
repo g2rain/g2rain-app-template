@@ -3,4 +3,5 @@
  */
 
 export { useAccessTokenStore } from './token.store';
+export { useLocaleStore } from './locale.store';
 

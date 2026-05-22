@@ -13,6 +13,7 @@ import { updateHttpBaseURLFromProps } from '@/components/http';
 import { initMicroAppMessageHandlers } from './message-handlers';
 import { removeShell } from '@/runtime/micro-shells';
 import { teardownTokenExpiredWatcher } from '@/runtime/boot';
+import { useLocaleStore } from '@platform/stores/locale.store';
 
 // WindowEventSubAppEventAdapter 直接复用 components/micro-app 中的实现
 
@@ -102,6 +103,10 @@ export function registerQiankunLifecycle(ctx: QiankunLifecycleContext): void {
 
       // 在 Pinia 初始化后，先初始化 token（必须在路由初始化之前）
       await initTokenFromProps(props);
+
+      if (props.localeCode) {
+        await useLocaleStore().applyFromMain(props.localeCode);
+      }
 
       // Token 初始化完成后，再初始化路由（从资源接口加载，需要 token）
       try {
@@ -196,6 +201,10 @@ export function registerQiankunLifecycle(ctx: QiankunLifecycleContext): void {
       // 更新 token
       if (props.token && props.tokenKid) {
         await initTokenFromProps(props);
+      }
+
+      if (props.localeCode) {
+        await useLocaleStore().applyFromMain(props.localeCode);
       }
 
       // 更新路由（从资源接口重新加载）
