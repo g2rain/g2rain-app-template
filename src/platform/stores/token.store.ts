@@ -38,6 +38,9 @@ export const useAccessTokenStore = defineStore('token', {
         return false;
       }
     },
+    isAdminCompany(): boolean {
+      return this.token?.adminCompany === true;
+    },
     // 检查 access token 是否有效
     isAccessTokenValid(): boolean {
 
@@ -73,6 +76,7 @@ export const useAccessTokenStore = defineStore('token', {
           applicationScopes: (payload.applicationScopes as ApplicationScope[]) || [],
           expireAt: (payload.expireAt as number) || 0,
           refreshExpireAt: (payload.refreshExpireAt as number) || 0,
+          adminCompany: payload.adminCompany === true,
         };
 
         this.logged = true;
