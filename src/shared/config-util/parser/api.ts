@@ -122,10 +122,7 @@ function parseApiFile(filePath: string, pageCode: string, pageName: string): Res
 /**
  * 解析 views 目录下的所有 API 文件
  */
-export async function parseApiFiles(
-  viewsDir: string,
-  pages: ResourcePage[]
-): Promise<ResourceApiEndpoint[]> {
+export async function parseApiFiles(viewsDir: string, pages: ResourcePage[]): Promise<ResourceApiEndpoint[]> {
   const allEndpoints: ResourceApiEndpoint[] = [];
 
   // 为每个页面查找对应的 API 文件
