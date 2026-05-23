@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useAccessTokenStore } from '@platform/stores';
 import { RemoteSelect } from './index';
 import type { FetchDataFunction, RemoteSelectOption } from './types';
@@ -55,7 +55,29 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 const tokenStore = useAccessTokenStore();
 
-const autoSelectFirstWhenEmpty = computed(() => !tokenStore.isAdminCompany);
+const isEmptyModelValue = (value: number | null | undefined) => value === null || value === undefined;
+
+/** 非管理公司且未选中时，用 token.organId 同步回填 v-model（早于父页 onMounted / loadData） */
+const applyTokenOrganDefault = () => {
+  if (tokenStore.isAdminCompany || !isEmptyModelValue(props.modelValue)) {
+    return;
+  }
+  const organId = tokenStore.organId;
+  if (organId == null) {
+    return;
+  }
+  emit('update:modelValue', organId);
+  emit('change', organId);
+};
+
+watch(
+  () => [props.modelValue, tokenStore.organId] as const,
+  () => applyTokenOrganDefault(),
+  { immediate: true },
+);
+
+const autoSelectFirstWhenEmpty = computed(() => !tokenStore.isAdminCompany && tokenStore.organId == null);
+
 const resolvedClearable = computed(() => {
   if (props.clearable !== undefined) {
     return props.clearable;
