@@ -105,7 +105,11 @@ export function registerQiankunLifecycle(ctx: QiankunLifecycleContext): void {
       await initTokenFromProps(props);
 
       if (props.localeCode) {
-        await useLocaleStore().applyFromMain(props.localeCode);
+        try {
+          await useLocaleStore().applyFromMain(props.localeCode);
+        } catch (error) {
+          console.error('[qiankun] 应用主应用语言失败，继续挂载:', error);
+        }
       }
 
       // Token 初始化完成后，再初始化路由（从资源接口加载，需要 token）
@@ -204,7 +208,11 @@ export function registerQiankunLifecycle(ctx: QiankunLifecycleContext): void {
       }
 
       if (props.localeCode) {
-        await useLocaleStore().applyFromMain(props.localeCode);
+        try {
+          await useLocaleStore().applyFromMain(props.localeCode);
+        } catch (error) {
+          console.error('[qiankun] 应用主应用语言失败，继续更新:', error);
+        }
       }
 
       // 更新路由（从资源接口重新加载）

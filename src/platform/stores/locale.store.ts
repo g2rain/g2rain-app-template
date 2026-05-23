@@ -93,14 +93,15 @@ export const useLocaleStore = defineStore('locale', () => {
         }
 
         initialized.value = true;
-        await syncI18nMessages(true);
-        console.log('[LocaleStore] 语言列表初始化完成:', currentCode.value || '(无可用项)');
       } catch (error) {
         console.error('[LocaleStore] 语言列表初始化失败:', error);
         throw error;
       } finally {
         initializing = null;
       }
+
+      await syncI18nMessages(true);
+      console.log('[LocaleStore] 语言列表初始化完成:', currentCode.value || '(无可用项)');
     })();
 
     return initializing;

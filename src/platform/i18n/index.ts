@@ -51,8 +51,8 @@ export async function loadAndApplyI18nMessages(
       (i18n.global.locale as { value: string }).value = localeCode;
       lastLoadedKey = cacheKey;
     } catch (error) {
-      console.error('[I18n] 文案包加载失败:', error);
-      throw error;
+      console.warn('[I18n] 文案包加载失败，将使用降级文案:', error);
+      (i18n.global.locale as { value: string }).value = localeCode;
     } finally {
       loading = null;
     }
