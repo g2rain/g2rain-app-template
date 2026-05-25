@@ -104,9 +104,9 @@ export function registerQiankunLifecycle(ctx: QiankunLifecycleContext): void {
       // 在 Pinia 初始化后，先初始化 token（必须在路由初始化之前）
       await initTokenFromProps(props);
 
-      if (props.localeCode) {
+      if (props.locale) {
         try {
-          await useLocaleStore().applyFromMain(props.localeCode);
+          await useLocaleStore().applyFromMain(props.locale);
         } catch (error) {
           console.error('[qiankun] 应用主应用语言失败，继续挂载:', error);
         }
@@ -207,9 +207,9 @@ export function registerQiankunLifecycle(ctx: QiankunLifecycleContext): void {
         await initTokenFromProps(props);
       }
 
-      if (props.localeCode) {
+      if (props.locale) {
         try {
-          await useLocaleStore().applyFromMain(props.localeCode);
+          await useLocaleStore().applyFromMain(props.locale);
         } catch (error) {
           console.error('[qiankun] 应用主应用语言失败，继续更新:', error);
         }

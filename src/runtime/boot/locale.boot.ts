@@ -23,7 +23,7 @@ class LocaleBoot {
 
   start(): void {
     if (isQiankunRuntime()) {
-      console.log('[LocaleBoot] 集成模式，语言由主应用 localeCode 驱动');
+      console.log('[LocaleBoot] 集成模式，语言由主应用 locale 驱动');
       return;
     }
 

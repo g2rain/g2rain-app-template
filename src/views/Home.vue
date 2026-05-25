@@ -7,7 +7,7 @@
           <div class="card-header-actions">
             <el-select
               v-if="showLocaleSelect"
-              v-model="selectedLocaleCode"
+              v-model="selectedLocale"
               placeholder="选择语言"
               filterable
               class="locale-select"
@@ -92,10 +92,10 @@ const isMock = isMockEnabled();
 const localeStore = useLocaleStore();
 const showLocaleSelect = isAloneMode();
 
-const selectedLocaleCode = computed({
-  get: () => localeStore.currentCode,
+const selectedLocale = computed({
+  get: () => localeStore.locale,
   set: (code: string) => {
-    void localeStore.setCurrentCode(code);
+    void localeStore.setLocale(code);
   },
 });
 

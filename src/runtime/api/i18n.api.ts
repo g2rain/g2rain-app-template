@@ -6,13 +6,12 @@ export interface I18nLocaleMessage {
   extendField?: string;
 }
 
-export async function fetchI18nLocaleMessages(languageCode: string, regionCode: string): Promise<I18nLocaleMessage[]> {
+/** GET /api/infra/i18n_message/locale?tag=TEMPLATE&locale=zh-CN */
+export async function fetchI18nLocaleMessages(locale: string): Promise<I18nLocaleMessage[]> {
   const httpClient = getHttpClient('auth');
   const result = (await httpClient.get('/api/infra/i18n_message/locale', {
     tag: 'TEMPLATE',
-    languageCode,
-    regionCode,
-    messageUsageCode: 'UI_MESSAGE',
+    locale: locale.trim(),
   })) as Result<I18nLocaleMessage[]>;
 
   return result.data ?? [];

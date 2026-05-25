@@ -12,7 +12,6 @@ export const i18n = createI18n({
   missing: (_locale, key) => key,
 });
 
-/** 第二参数为页面填写的默认文案，后台未配置时使用 */
 export function t(code: string, defaultText?: string): string {
   if (defaultText !== undefined) {
     return i18n.global.t(code, defaultText);
@@ -20,17 +19,15 @@ export function t(code: string, defaultText?: string): string {
   return i18n.global.t(code);
 }
 
-let lastLoadedKey = '';
+let lastLoadedLocale = '';
 let loading: Promise<void> | null = null;
 
-export async function loadAndApplyI18nMessages(
-  localeCode: string,
-  languageCode: string,
-  regionCode: string,
-  force = false,
-): Promise<void> {
-  const cacheKey = `${localeCode}:${languageCode}:${regionCode}`;
-  if (!force && cacheKey === lastLoadedKey) {
+export async function loadAndApplyI18nMessages(locale: string, force = false): Promise<void> {
+  const trimmed = locale.trim();
+  if (!trimmed) {
+    return;
+  }
+  if (!force && trimmed === lastLoadedLocale) {
     return;
   }
   if (loading) {
@@ -39,17 +36,17 @@ export async function loadAndApplyI18nMessages(
 
   loading = (async () => {
     try {
-      const list = await fetchI18nLocaleMessages(languageCode, regionCode);
+      const list = await fetchI18nLocaleMessages(trimmed);
       const messages: Record<string, string> = {};
       for (const item of list) {
-        const trimmed = item.messageText?.trim();
-        if (item.messageCode && trimmed) {
-          messages[item.messageCode] = trimmed;
+        const text = item.messageText?.trim();
+        if (item.messageCode && text) {
+          messages[item.messageCode] = text;
         }
       }
-      i18n.global.setLocaleMessage(localeCode, messages);
-      (i18n.global.locale as { value: string }).value = localeCode;
-      lastLoadedKey = cacheKey;
+      i18n.global.setLocaleMessage(trimmed, messages);
+      (i18n.global.locale as { value: string }).value = trimmed;
+      lastLoadedLocale = trimmed;
     } catch (error) {
       console.warn('[I18n] 文案包加载失败，将使用降级文案:', error);
       (i18n.global.locale as { value: string }).value = localeCode;
@@ -62,6 +59,6 @@ export async function loadAndApplyI18nMessages(
 }
 
 export function resetI18nLoader(): void {
-  lastLoadedKey = '';
+  lastLoadedLocale = '';
   loading = null;
 }

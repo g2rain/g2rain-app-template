@@ -20,7 +20,7 @@ export interface MicroAppProps {
   activeRule?: string; // 子应用的激活规则（如 '/sub-app-1'）
   entryOrigin?: string; // 子应用的 entry origin（用于后端请求，如 'http://localhost:3001'）
   /** 主应用当前语言，如 zh-CN（集成模式由 main-shell 传入） */
-  localeCode?: string;
+  locale?: string;
   [key: string]: any; // 允许其他自定义参数
 }
 

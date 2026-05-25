@@ -1,72 +1,55 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { LocaleOption } from '@platform/locale';
-import { parseLocaleCode, loadSavedLocaleCode, saveLocaleCode } from '@platform/locale';
+import { loadSavedLocale, saveLocale } from '@platform/locale';
 import { getLocaleCodeNameList, type LocaleCodeName } from '@/runtime/api/locale.api';
 import { loadAndApplyI18nMessages } from '@platform/i18n';
 
 function toLocaleOption(item: LocaleCodeName): LocaleOption {
-  const { languageCode, regionCode } = parseLocaleCode(item.code);
   return {
     code: item.code,
     name: item.name,
-    languageCode,
-    regionCode,
   };
 }
 
-function resolveInitialCode(options: LocaleOption[], savedCode: string | null): string {
-  if (savedCode && options.some((o) => o.code === savedCode)) {
-    return savedCode;
+function resolveInitialLocale(options: LocaleOption[], saved: string | null): string {
+  if (saved && options.some((o) => o.code === saved)) {
+    return saved;
   }
   return options[0]?.code ?? '';
 }
 
-function buildOptionFromCode(code: string): LocaleOption | null {
-  const trimmed = code.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const { languageCode, regionCode } = parseLocaleCode(trimmed);
-  return {
-    code: trimmed,
-    name: trimmed,
-    languageCode,
-    regionCode,
-  };
-}
-
 export const useLocaleStore = defineStore('locale', () => {
   const options = ref<LocaleOption[]>([]);
-  const currentCode = ref('');
+  const locale = ref('');
   const initialized = ref(false);
   let initializing: Promise<void> | null = null;
 
   const current = computed<LocaleOption | null>(() => {
-    if (!currentCode.value) {
+    if (!locale.value) {
       return null;
     }
-    return options.value.find((o) => o.code === currentCode.value) ?? buildOptionFromCode(currentCode.value);
+    return (
+      options.value.find((o) => o.code === locale.value) ?? {
+        code: locale.value,
+        name: locale.value,
+      }
+    );
   });
 
-  const languageCode = computed(() => current.value?.languageCode ?? '');
-  const regionCode = computed(() => current.value?.regionCode ?? '');
-  const acceptLanguage = computed(() => currentCode.value);
-
   async function syncI18nMessages(force = false): Promise<void> {
-    const locale = current.value;
-    if (!locale?.languageCode || !currentCode.value) {
+    if (!locale.value) {
       return;
     }
-    await loadAndApplyI18nMessages(currentCode.value, locale.languageCode, locale.regionCode ?? '', force);
+    await loadAndApplyI18nMessages(locale.value, force);
   }
 
-  function applyCurrentCode(code: string): void {
+  function applyLocale(code: string): void {
     if (!code || !options.value.some((o) => o.code === code)) {
       return;
     }
-    currentCode.value = code;
-    saveLocaleCode(code);
+    locale.value = code;
+    saveLocale(code);
   }
 
   async function initialize(): Promise<void> {
@@ -83,13 +66,13 @@ export const useLocaleStore = defineStore('locale', () => {
         const mapped = list.map(toLocaleOption);
         options.value = mapped;
 
-        const saved = loadSavedLocaleCode();
-        const code = resolveInitialCode(mapped, saved);
+        const saved = loadSavedLocale();
+        const code = resolveInitialLocale(mapped, saved);
         if (code) {
-          currentCode.value = code;
-          saveLocaleCode(code);
+          locale.value = code;
+          saveLocale(code);
         } else {
-          currentCode.value = '';
+          locale.value = '';
         }
 
         initialized.value = true;
@@ -101,34 +84,35 @@ export const useLocaleStore = defineStore('locale', () => {
       }
 
       await syncI18nMessages(true);
-      console.log('[LocaleStore] 语言列表初始化完成:', currentCode.value || '(无可用项)');
+      console.log('[LocaleStore] 语言列表初始化完成:', locale.value || '(无可用项)');
     })();
 
     return initializing;
   }
 
-  async function setCurrentCode(code: string): Promise<void> {
+  async function setLocale(code: string): Promise<void> {
     if (!initialized.value) {
       console.warn('[LocaleStore] 尚未初始化，忽略切换:', code);
       return;
     }
-    if (currentCode.value === code) {
+    if (locale.value === code) {
       return;
     }
-    applyCurrentCode(code);
+    applyLocale(code);
     await syncI18nMessages(true);
   }
 
-  /** 集成模式：主应用通过 props.localeCode 驱动 */
-  async function applyFromMain(localeCode: string): Promise<void> {
-    const trimmed = localeCode.trim();
+  /** 集成模式：主应用通过 props.locale 驱动 */
+  async function applyFromMain(nextLocale: string): Promise<void> {
+    const trimmed = nextLocale.trim();
     if (!trimmed) {
       return;
     }
-    if (currentCode.value === trimmed && initialized.value) {
+    if (locale.value === trimmed && initialized.value) {
       return;
     }
-    currentCode.value = trimmed;
+    locale.value = trimmed;
+    saveLocale(trimmed);
     initialized.value = true;
     await syncI18nMessages(true);
     console.log('[LocaleStore] 已应用主应用语言:', trimmed);
@@ -136,21 +120,18 @@ export const useLocaleStore = defineStore('locale', () => {
 
   function reset(): void {
     options.value = [];
-    currentCode.value = '';
+    locale.value = '';
     initialized.value = false;
     initializing = null;
   }
 
   return {
     options,
-    currentCode,
+    locale,
     current,
-    languageCode,
-    regionCode,
-    acceptLanguage,
     initialized,
     initialize,
-    setCurrentCode,
+    setLocale,
     applyFromMain,
     reset,
   };
