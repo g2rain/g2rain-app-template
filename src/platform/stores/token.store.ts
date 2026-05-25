@@ -3,7 +3,7 @@ import type { Token, ApplicationScope } from '@platform/types/http.types';
 import type { Client } from '@/components/http';
 import { jwtVerify } from 'jose';
 import { publicKeyStringToJwk } from '@shared/utils/jwt.util';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { isQiankunRuntime } from '@shared/utils/mode.util';
 
 const STORAGE_KEY = 'g2rain_token';
 
@@ -38,7 +38,12 @@ export const useAccessTokenStore = defineStore('token', {
         return false;
       }
     },
-    // 检查 access token 是否有效
+    isAdminCompany(): boolean {
+      return this.token?.adminCompany === true;
+    },
+    organId(): number | undefined {
+      return this.token?.organId;
+    },
     isAccessTokenValid(): boolean {
 
       if (!this.token?.expireAt) return false;
@@ -67,12 +72,17 @@ export const useAccessTokenStore = defineStore('token', {
         const { payload } = await jwtVerify(tokenString, publicKeyJwk);
 
         this.tokenString = tokenString;
+        const rawOrganId = payload.organId;
+        const organId = rawOrganId != null && rawOrganId !== '' ? Number(rawOrganId) : undefined;
+
         this.token = {
           clientId: (payload.clientId as string) || '',
           clientPublicKey: (payload.clientPublicKey as string) || '',
           applicationScopes: (payload.applicationScopes as ApplicationScope[]) || [],
           expireAt: (payload.expireAt as number) || 0,
           refreshExpireAt: (payload.refreshExpireAt as number) || 0,
+          adminCompany: payload.adminCompany === true,
+          organId: organId != null && !Number.isNaN(organId) ? organId : undefined,
         };
 
         this.logged = true;
@@ -97,7 +107,7 @@ export const useAccessTokenStore = defineStore('token', {
     },
   },
   // 持久化配置：子应用不进行 token 持久化（token 由主应用管理）
-  persist: isIntegrateMode()
+  persist: isQiankunRuntime()
     ? false
     : {
       key: STORAGE_KEY,

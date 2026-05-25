@@ -1,22 +1,50 @@
 /**
- * dict 相关 API（供 DictSelect 复用的 apiMethod）
+ * dict 相关 API（供 DictSelect / DictText 复用的 apiMethod）
+ *
+ * 使用 GET /infra/dictionary_item/localized_options（已国际化，无分页）
+ * 同一 usageCode 在 TTL 内缓存全量列表，按 code / name 优先内存匹配。
  */
 
 import { getHttpClient } from '@/components/http';
 import type { RemoteSelectOption } from '@/components';
 import type { DictItem } from './type';
-import type { PageData } from '@platform/types/api.type';
 
 // 导入 mock 数据以触发自动注册（副作用导入）
 import './mock';
 
+const LOCALIZED_OPTIONS_PATH = '/infra/dictionary_item/localized_options';
+
+/** 将 BOOLEAN_FLAG 等字典 code 转为 boolean（与业务页、DictText 回显一致） */
+export function parseDictCodeAsBoolean(code: string): boolean | undefined {
+  const normalized = String(code).trim().toLowerCase();
+  if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'n'].includes(normalized)) return false;
+  return undefined;
+}
+
+/** DictSelect / DictText / loadByUsageCode 统一入参 */
+export type DictSelectParams = {
+  /** 按 name 模糊搜索 */
+  key?: string;
+  /** 按 code 精确查询（DictText 回显） */
+  code?: string;
+  usageCode?: string;
+};
+
 export class DictItemApi {
-  /**
-   * 短期缓存（用于同页内去重、合并并发请求）
-   * - key: usageCode + keyword
-   * - value: promise + 过期时间
-   */
-  private static readonly selectCache = new Map<
+  /** 按 usageCode 缓存（会话内复用） */
+  private static readonly usageCache = new Map<
+    string,
+    {
+      expiresAt: number;
+      items?: RemoteSelectOption[];
+      promise?: Promise<RemoteSelectOption[]>;
+    }
+  >();
+
+  private static readonly usageCacheTtlMs = 5 * 60 * 1000;
+
+  private static readonly httpCache = new Map<
     string,
     {
       expiresAt: number;
@@ -24,78 +52,158 @@ export class DictItemApi {
     }
   >();
 
-  /** 默认缓存 TTL（毫秒） */
-  private static readonly selectCacheTtlMs = 3000;
+  private static readonly httpCacheTtlMs = 3000;
 
-  private static buildSelectCacheKey(params: Record<string, any>): string {
-    const usageCode = String(params.usageCode || '').trim();
-    const key = String(params.key || '').trim();
-    const pageNum = params.pageNum ?? params.page;
-    const pageSize = params.pageSize ?? params.size;
-    return JSON.stringify({ usageCode, key, pageNum, pageSize });
+  private static buildUsageCacheKey(usageCode: string): string {
+    return usageCode;
   }
 
-  private static gcSelectCache(now = Date.now()): void {
-    for (const [k, v] of DictItemApi.selectCache) {
+  private static buildHttpCacheKey(params: Record<string, unknown>): string {
+    return JSON.stringify(params);
+  }
+
+  private static gcHttpCache(now = Date.now()): void {
+    for (const [k, v] of DictItemApi.httpCache) {
       if (v.expiresAt <= now) {
-        DictItemApi.selectCache.delete(k);
+        DictItemApi.httpCache.delete(k);
       }
     }
   }
 
-  /**
-   * 给 DictSelect 使用的 apiMethod（仅按 name 搜索关键字）
-   * - DictSelect 会把输入关键字统一映射为 `params.key`
-   * - 默认列表走 infra 的 `page`：`/infra/dictionary_item/page`
-   * - 当 `key` 为空但 `usageCode` 存在时：默认拉取第一页（pageNum=1, pageSize=10）
-   */
-  static async select(params: { key?: string; usageCode?: string }): Promise<RemoteSelectOption[]> {
-    const http = getHttpClient('default');
-
+  private static buildQuery(params: DictSelectParams): Record<string, unknown> {
     const key = params.key?.trim();
+    const code = params.code?.trim();
     const usageCode = params.usageCode?.trim();
 
-    // 没有用途编码且没有关键字：无法限定字典范围，直接返回空
-    if (!usageCode && !key) return [];
-
-    const normalized: Record<string, any> = {
+    return {
       ...(usageCode ? { usageCode } : {}),
-      ...(key ? { key } : {}),
-      // 无关键字时默认分页拉取（满足“打开下拉默认有数据”）
-      ...(!key
-        ? {
-            pageNum: 1,
-            pageSize: 10,
-          }
-        : {}),
+      ...(code ? { code } : {}),
+      ...(key ? { name: key } : {}),
     };
+  }
 
-    // 短期缓存：同 usageCode + key 在 TTL 内复用（包含并发 promise）
+  private static async fetchLocalizedOptions(query: Record<string, unknown>): Promise<RemoteSelectOption[]> {
     const now = Date.now();
-    DictItemApi.gcSelectCache(now);
-    const cacheKey = DictItemApi.buildSelectCacheKey(normalized);
-    const cached = DictItemApi.selectCache.get(cacheKey);
+    DictItemApi.gcHttpCache(now);
+    const cacheKey = DictItemApi.buildHttpCacheKey(query);
+    const cached = DictItemApi.httpCache.get(cacheKey);
     if (cached && cached.expiresAt > now) {
       return cached.promise;
     }
 
+    const http = getHttpClient('default');
     const promise = (async () => {
-      const res = await http.get<PageData<DictItem>>('/infra/dictionary_item/page', normalized);
-      return res.data?.records || [];
+      const res = await http.get<DictItem[]>(LOCALIZED_OPTIONS_PATH, query);
+      return res.data || [];
     })();
 
-    DictItemApi.selectCache.set(cacheKey, {
-      expiresAt: now + DictItemApi.selectCacheTtlMs,
+    DictItemApi.httpCache.set(cacheKey, {
+      expiresAt: now + DictItemApi.httpCacheTtlMs,
       promise,
     });
 
     try {
       return await promise;
     } catch (e) {
-      // 请求失败不缓存
-      DictItemApi.selectCache.delete(cacheKey);
+      DictItemApi.httpCache.delete(cacheKey);
       throw e;
     }
   }
-}
 
+  /**
+   * 按 usageCode 加载并缓存字典列表（同页多处复用）
+   */
+  static async loadByUsageCode(usageCode: string): Promise<RemoteSelectOption[]> {
+    const code = usageCode?.trim();
+    if (!code) return [];
+
+    const cacheKey = DictItemApi.buildUsageCacheKey(code);
+    const now = Date.now();
+    const entry = DictItemApi.usageCache.get(cacheKey);
+    if (entry?.items && entry.expiresAt > now) {
+      return entry.items;
+    }
+    if (entry?.promise && entry.expiresAt > now) {
+      return entry.promise;
+    }
+
+    const promise = DictItemApi.fetchLocalizedOptions({ usageCode: code });
+
+    DictItemApi.usageCache.set(cacheKey, {
+      expiresAt: now + DictItemApi.usageCacheTtlMs,
+      promise,
+    });
+
+    try {
+      const items = await promise;
+      DictItemApi.usageCache.set(cacheKey, {
+        expiresAt: Date.now() + DictItemApi.usageCacheTtlMs,
+        items,
+      });
+      return items;
+    } catch (e) {
+      DictItemApi.usageCache.delete(cacheKey);
+      throw e;
+    }
+  }
+
+  private static filterByName(items: RemoteSelectOption[], keyword: string): RemoteSelectOption[] {
+    const key = keyword.trim().toLowerCase();
+    if (!key) return items;
+    return items.filter((item) => String(item.name ?? '').toLowerCase().includes(key));
+  }
+
+  /**
+   * 按 code 在已加载列表中匹配（含 boolean 语义：查询 code 为 "true" 时可匹配字典项 code 为 "1" 等）
+   */
+  private static matchByCode(items: RemoteSelectOption[], code: string): RemoteSelectOption[] {
+    const target = code.trim();
+    const direct = items.filter((item) => String(item.code ?? '') === target);
+    if (direct.length) return direct;
+
+    const queryAsBool = parseDictCodeAsBoolean(target);
+    if (queryAsBool !== undefined) {
+      return items.filter(
+        (item) => parseDictCodeAsBoolean(String(item.code ?? '')) === queryAsBool,
+      );
+    }
+    return [];
+  }
+
+  /** 给 DictSelect / DictText 使用的 apiMethod */
+  static async select(params: DictSelectParams): Promise<RemoteSelectOption[]> {
+    const key = params.key?.trim();
+    const code = params.code?.trim();
+    const usageCode = params.usageCode?.trim();
+
+    if (!usageCode && !key && !code) return [];
+
+    if (usageCode) {
+      const items = await DictItemApi.loadByUsageCode(usageCode);
+
+      if (code && !key) {
+        const matched = DictItemApi.matchByCode(items, code);
+        if (matched.length) return matched;
+        return DictItemApi.fetchLocalizedOptions({ usageCode, code });
+      }
+
+      if (key) {
+        const matched = DictItemApi.filterByName(items, key);
+        if (matched.length) return matched;
+        return DictItemApi.fetchLocalizedOptions({ usageCode, name: key });
+      }
+
+      return items;
+    }
+
+    return DictItemApi.fetchLocalizedOptions(DictItemApi.buildQuery(params));
+  }
+
+  static clearUsageCache(usageCode?: string): void {
+    if (!usageCode) {
+      DictItemApi.usageCache.clear();
+      return;
+    }
+    DictItemApi.usageCache.delete(DictItemApi.buildUsageCacheKey(usageCode.trim()));
+  }
+}

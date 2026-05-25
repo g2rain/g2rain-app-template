@@ -8,11 +8,11 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { sso } from '@runtime/auth';
-import { isIntegrateMode } from '@shared/utils/mode.util';
+import { isAloneMode } from '@shared/utils/mode.util';
 
 onMounted(() => {
-  // 集成模式下不监控 token 状态变化，由主应用统一管理
-  if (!isIntegrateMode()) {
+  // qiankun 集成运行时由主应用统一管理 token
+  if (isAloneMode()) {
     sso.listenTokenChanges();
   }
 });

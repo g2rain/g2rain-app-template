@@ -5,6 +5,7 @@
 
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { loadingManager, shouldShowLoading } from '@/components/loading';
+import { applyAcceptLanguageHeader } from '@platform/locale';
 import { shouldUseMock } from '../mock-utils';
 import type { HttpAuthSession, EnsureAccessTokenOptions } from '../types';
 
@@ -55,6 +56,7 @@ export function setupBaseRequestInterceptor(instance: AxiosInstance): void {
         return config;
       }
 
+      applyAcceptLanguageHeader(config);
       return config;
     },
     (error) => {

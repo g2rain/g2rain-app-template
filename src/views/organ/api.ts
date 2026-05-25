@@ -13,7 +13,7 @@ export class OrganApi {
    */
   static async searchOrgans(params?: { key?: string; value?: number } | string): Promise<OrganIdNameMap[]> {
     const http = getHttpClient('default');
-    const organName = typeof params === 'string' ? params : (params?.key ?? '');
+    const organName = typeof params === 'string' ? params : (params?.key ?? (params?.value != null ? String(params.value) : ''));
     const res = await http.get<OrganIdNameMap[]>('/basis/organ/search', { organName });
     return res.data || [];
   }

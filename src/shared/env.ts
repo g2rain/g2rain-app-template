@@ -4,7 +4,7 @@
  * - 提供 env / getPathWithContextPath / isMockEnabled 等能力
  */
 
-function getEnvVar(key: string, defaultValue = ''): string {
+export function getEnvVar(key: string, defaultValue = ''): string {
   if (typeof window !== 'undefined' && (window as any)._env_) {
     const runtimeValue = (window as any)._env_[key];
     if (runtimeValue !== undefined && runtimeValue !== null && runtimeValue !== '') {
@@ -28,7 +28,7 @@ function getEnvVar(key: string, defaultValue = ''): string {
   return defaultValue;
 }
 
-function getEnvBoolean(key: string, defaultValue = false): boolean {
+export function getEnvBoolean(key: string, defaultValue = false): boolean {
   const value = getEnvVar(key, '');
   if (value === '') {
     return defaultValue;
@@ -48,6 +48,12 @@ export type SharedEnv = {
   VITE_USE_MOCK: string;
   VITE_BACKEND_ORIGIN: string;
   VITE_SERVER_PORT: string;
+  /** 空=集成意图；alone=独立运行 */
+  VITE_RUN_MODE: string;
+  /** main-shell 子应用网关前缀，默认 /main/redirect */
+  VITE_MAIN_SHELL_REDIRECT_PREFIX: string;
+  /** 开发跨端口时 main-shell 的 origin，如 http://localhost:5173 */
+  VITE_MAIN_SHELL_ORIGIN: string;
 };
 
 /**
@@ -68,6 +74,10 @@ export const env: SharedEnv = new Proxy({} as SharedEnv, {
     if (prop === 'VITE_USE_MOCK') return getEnvVar('VITE_USE_MOCK', 'false');
     if (prop === 'VITE_BACKEND_ORIGIN') return getEnvVar('VITE_BACKEND_ORIGIN', 'http://localhost:8080');
     if (prop === 'VITE_SERVER_PORT') return getEnvVar('VITE_SERVER_PORT', '3000');
+    if (prop === 'VITE_RUN_MODE') return getEnvVar('VITE_RUN_MODE', '');
+    if (prop === 'VITE_MAIN_SHELL_REDIRECT_PREFIX')
+      return getEnvVar('VITE_MAIN_SHELL_REDIRECT_PREFIX', '/main/redirect');
+    if (prop === 'VITE_MAIN_SHELL_ORIGIN') return getEnvVar('VITE_MAIN_SHELL_ORIGIN', '');
 
     if (prop === Symbol.toStringTag) return 'SharedEnv';
     return undefined;

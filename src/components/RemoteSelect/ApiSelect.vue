@@ -86,9 +86,7 @@ const handleChange = (value: number | string | null | undefined) => {
   emit('change', value);
 };
 
-const fetchData: FetchDataFunction<RemoteSelectOption> = async (
-  params: { key?: string; value?: number },
-): Promise<RemoteSelectOption[]> => {
+const fetchData: FetchDataFunction<RemoteSelectOption> = async (params: { key?: string; value?: number }): Promise<RemoteSelectOption[]> => {
   const keyword = params.key?.trim() || '';
   const hasValue = params.value !== undefined && params.value !== null;
 

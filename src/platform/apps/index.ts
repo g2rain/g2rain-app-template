@@ -39,7 +39,13 @@ export function emitRouteChange(data: RouteChangeData): void {
 }
 
 // 导出工具函数
-export { isIntegrateMode, isQianKunMode } from '@shared/utils/mode.util';
+export {
+  isAloneMode,
+  isIntegrateMode,
+  isQiankunRuntime,
+  isQianKunMode,
+  shouldRedirectToMainShellGateway,
+} from '@shared/utils/mode.util';
 
 // 导出初始化函数
 export { initTokenFromProps } from './init';
