@@ -13,4 +13,3 @@ export interface DictItem extends BaseVo {
   description: string;
   sortIndex: number;
 }
-

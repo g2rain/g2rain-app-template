@@ -7,6 +7,7 @@
 
 import { getHttpClient } from '@/components/http';
 import type { RemoteSelectOption } from '@/components';
+import { useLocaleStore } from '@platform/stores/locale.store';
 import type { DictItem } from './type';
 
 // 导入 mock 数据以触发自动注册（副作用导入）
@@ -54,12 +55,20 @@ export class DictItemApi {
 
   private static readonly httpCacheTtlMs = 3000;
 
+  private static resolveLocaleTag(): string {
+    try {
+      return useLocaleStore().locale?.trim() || '';
+    } catch {
+      return '';
+    }
+  }
+
   private static buildUsageCacheKey(usageCode: string): string {
-    return usageCode;
+    return `${usageCode}::${DictItemApi.resolveLocaleTag()}`;
   }
 
   private static buildHttpCacheKey(params: Record<string, unknown>): string {
-    return JSON.stringify(params);
+    return JSON.stringify({ ...params, __locale: DictItemApi.resolveLocaleTag() });
   }
 
   private static gcHttpCache(now = Date.now()): void {

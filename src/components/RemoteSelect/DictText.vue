@@ -4,6 +4,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useLocaleStore } from '@platform/stores/locale.store';
 import { parseDictCodeAsBoolean } from '@/views/dict/api';
 import type { RemoteSelectOption } from './types';
 
@@ -78,8 +79,10 @@ const loadLabel = async () => {
   }
 };
 
+const localeStore = useLocaleStore();
+
 watch(
-  () => [props.value, props.usageCode],
+  () => [props.value, props.usageCode, localeStore.locale],
   () => {
     void loadLabel();
   },

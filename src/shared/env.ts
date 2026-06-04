@@ -54,6 +54,8 @@ export type SharedEnv = {
   VITE_MAIN_SHELL_REDIRECT_PREFIX: string;
   /** 开发跨端口时 main-shell 的 origin，如 http://localhost:5173 */
   VITE_MAIN_SHELL_ORIGIN: string;
+  /** 国际化文案包 tags（逗号分隔，与 i18n_message.tag 一致） */
+  VITE_I18N_TAGS: string;
 };
 
 /**
@@ -78,6 +80,7 @@ export const env: SharedEnv = new Proxy({} as SharedEnv, {
     if (prop === 'VITE_MAIN_SHELL_REDIRECT_PREFIX')
       return getEnvVar('VITE_MAIN_SHELL_REDIRECT_PREFIX', '/main/redirect');
     if (prop === 'VITE_MAIN_SHELL_ORIGIN') return getEnvVar('VITE_MAIN_SHELL_ORIGIN', '');
+    if (prop === 'VITE_I18N_TAGS') return getEnvVar('VITE_I18N_TAGS', 'G2RAIN_SHARED');
 
     if (prop === Symbol.toStringTag) return 'SharedEnv';
     return undefined;
