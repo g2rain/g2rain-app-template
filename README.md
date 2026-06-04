@@ -4,7 +4,7 @@
 
 官方微前端子应用模板（Vue 3 + Vite + qiankun + Element Plus）。推荐使用脚手架 [**create-g2rain-app**](https://github.com/g2rain/g2rain-app-cli) 基于本仓库生成工程；技术栈、目录结构、环境变量与运行方式**以本 README 为准**。
 
-**占位符说明**：模板中的 `{{PROJECT_NAME}}`（如 `package.json`、本文标题示例）在通过 CLI 创建项目时会被替换为实际项目名；若直接 clone 本仓库开发模板本身，请自行理解或替换占位符。
+**占位符说明**：模板中的 `{{PROJECT_NAME}}`（如 `package.json`、`VITE_APPLICATION_CODE`）与 `{{CONTEXT_PATH}}`（如 `VITE_CONTEXT_PATH`）在通过 CLI 创建项目时会被替换；若直接 clone 本仓库开发模板本身，请自行理解或替换占位符。
 
 ## 📋 目录
 
