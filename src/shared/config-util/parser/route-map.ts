@@ -3,7 +3,6 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import type { ResourcePage } from '@runtime/boot/types';
 
 /**
@@ -34,14 +33,15 @@ export async function parseRouteMap(routeMapPath: string): Promise<ResourcePage[
   const routeMapContent = routeMapMatch[1];
 
   // 解析每个路由的元数据
-  // 格式: '/dict': { component: ..., name: 'xxx', meta: { title: '字典配置', ... } },
-  // 使用非贪婪匹配来匹配每个路由项
-  const routePattern = /'([^']+)':\s*\{[\s\S]*?meta:\s*\{[\s\S]*?title:\s*'([^']+)'[\s\S]*?\}/g;
+  // 格式: '/dict': { component: ..., meta: { titleDefault: '字典配置', ... } },
+  // 兼容旧版 meta.title
+  const routePattern =
+    /'([^']+)':\s*\{[\s\S]*?meta:\s*\{[\s\S]*?(?:titleDefault:\s*'([^']+)'|title:\s*'([^']+)')/g;
   let match;
 
   while ((match = routePattern.exec(routeMapContent)) !== null) {
     const routePath = match[1];
-    const title = match[2];
+    const title = match[2] || match[3];
 
     // 跳过根路径和 home 路径
     if (routePath === '/' || routePath === '/home') {
@@ -59,4 +59,3 @@ export async function parseRouteMap(routeMapPath: string): Promise<ResourcePage[
 
   return pages;
 }
-
