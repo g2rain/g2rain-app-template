@@ -17,4 +17,3 @@ export function renderTemplate(templateName: string, data: { table: TableInfo })
     const template = fs.readFileSync(templatePath, 'utf-8');
     return ejs.render(template, data);
 }
-

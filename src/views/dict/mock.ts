@@ -45,8 +45,6 @@ const dictItems: DictItem[] = Array.from({ length: 18 }).map((_, i) =>
       code: `DICT_CODE_${i + 1}`,
       name: `字典项${i + 1}`,
       sortIndex: i + 1,
-      // mock 里额外提供 usageCode 字段，供前端按用途精确过滤
-      // 同时兼容历史 mock（USAGE_x）与 CMS 文章页当前使用的用途编码
       usageCode: i % 2 === 0 ? 'CMS_ARTICLE_CONTENT_TYPE' : `USAGE_${(i % 3) + 1}`,
     }),
   ),
@@ -63,7 +61,6 @@ function filterDictItems(query: Record<string, any>): DictItem[] {
   }
   if (name) {
     const keyword = String(name);
-    // 兼容 DictSelect 的初始回显：传入 code 时也应能查到对应选项
     filtered = filtered.filter((item) => item.name.includes(keyword) || (item.code || '').includes(keyword));
   }
 
@@ -75,13 +72,11 @@ function filterDictItems(query: Record<string, any>): DictItem[] {
 }
 
 export const DictItemMockDataMap: MockDataMap = {
-  // GET /infra/dictionary_item/list
   '/infra/dictionary_item/list': (config: AxiosRequestConfig) => {
     const query = config.params || {};
     return createResult<DictItem[]>(filterDictItems(query));
   },
 
-  // GET /infra/dictionary_item/localized_options（字典组件，已国际化，无分页）
   '/infra/dictionary_item/localized_options': (config: AxiosRequestConfig) => {
     const query = config.params || {};
     return createResult<DictItem[]>(filterDictItems(query));
@@ -89,4 +84,3 @@ export const DictItemMockDataMap: MockDataMap = {
 };
 
 mockManager.registerAll(DictItemMockDataMap);
-

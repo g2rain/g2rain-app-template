@@ -28,8 +28,8 @@
         <!-- 操作按钮 -->
         <template #actions>
           <el-form-item>
-            <el-button type="primary" @click="handleSearch">查询</el-button>
-            <el-button @click="handleReset">重置</el-button>
+            <el-button type="primary" @click="handleSearch">{{ $t('G2_BTN_QUERY', '查询') }}</el-button>
+            <el-button @click="handleReset">{{ $t('G2_BTN_RESET', '重置') }}</el-button>
           </el-form-item>
         </template>
       </QueryForm>
@@ -44,21 +44,21 @@
     </div>
 
     <SortableTable :data="tableData" border stripe style="width: 100%" :enable-multi-sort="true" @sort-change="handleSortChange">
-      <el-table-column prop="id" label="ID" width="120" />
+      <el-table-column prop="id" :label="$t('G2_FIELD_ID', 'ID')" width="120" />
 <% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
       <el-table-column prop="<%= col.camelName %>" label="<%= uiLabel(col) %>" width="<%= col.type === 'string' ? '180' : '140' %>" />
 <% }); -%>
-      <TableColumn prop="createTime" label="创建时间" width="180" :sortable="true" />
-      <TableColumn prop="updateTime" label="更新时间" width="180" :sortable="true" />
-      <el-table-column label="操作" fixed="right" width="280">
+      <TableColumn prop="createTime" :label="$t('G2_FIELD_CREATE_TIME', '创建时间')" width="180" :sortable="true" />
+      <TableColumn prop="updateTime" :label="$t('G2_FIELD_UPDATE_TIME', '更新时间')" width="180" :sortable="true" />
+      <el-table-column :label="$t('G2_FIELD_ACTION', '操作')" fixed="right" width="280">
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="handleView(row)">明细</el-button>
-          <el-button type="primary" v-permission="'<%= table.name %>:edit'" link size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button type="danger" v-permission="'<%= table.name %>:delete'" link size="small" @click="handleDelete(row)">删除</el-button>
+          <el-button type="primary" link size="small" @click="handleView(row)">{{ $t('G2_BTN_DETAIL', '明细') }}</el-button>
+          <el-button type="primary" v-permission="'<%= table.name %>:edit'" link size="small" @click="handleEdit(row)">{{ $t('G2_BTN_EDIT', '编辑') }}</el-button>
+          <el-button type="danger" v-permission="'<%= table.name %>:delete'" link size="small" @click="handleDelete(row)">{{ $t('G2_BTN_DELETE', '删除') }}</el-button>
         </template>
         <template #header>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span>操作</span>
+            <span>{{ $t('G2_FIELD_ACTION', '操作') }}</span>
             <SortManagerButton />
           </div>
         </template>
@@ -89,8 +89,8 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="editDialogVisible = false">取 消</el-button>
-          <el-button type="primary" @click="submitEdit">保 存</el-button>
+          <el-button @click="editDialogVisible = false">{{ $t('G2_BTN_CANCEL', '取消') }}</el-button>
+          <el-button type="primary" @click="submitEdit">{{ $t('G2_BTN_SAVE', '保存') }}</el-button>
         </span>
       </template>
     </el-dialog>
@@ -98,16 +98,16 @@
     <!-- 明细弹窗 -->
     <el-dialog v-model="detailDialogVisible" title="<%= table.title %>明细" width="520px">
       <el-descriptions :column="1" border>
-        <el-descriptions-item label="ID">{{ currentRow?.id }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('G2_FIELD_ID', 'ID')">{{ currentRow?.id }}</el-descriptions-item>
 <% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
         <el-descriptions-item label="<%= uiLabel(col) %>">{{ currentRow?.<%= col.camelName %> }}</el-descriptions-item>
 <% }); -%>
-        <el-descriptions-item label="创建时间">{{ currentRow?.createTime }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ currentRow?.updateTime }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('G2_FIELD_CREATE_TIME', '创建时间')">{{ currentRow?.createTime }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('G2_FIELD_UPDATE_TIME', '更新时间')">{{ currentRow?.updateTime }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
         <span class="dialog-footer">
-          <el-button type="primary" @click="detailDialogVisible = false">关 闭</el-button>
+          <el-button type="primary" @click="detailDialogVisible = false">{{ $t('G2_BTN_CLOSE', '关闭') }}</el-button>
         </span>
       </template>
     </el-dialog>
@@ -118,6 +118,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessageBox, ElMessage } from 'element-plus';
+import { t } from '@platform/i18n';
 import { <%= table.camelName %>Api } from './api';
 import type { <%= table.camelName %>, <%= table.camelName %>Payload, <%= table.camelName %>Query } from './type';
 import type { BaseSelectListDto, PageSelectListDto } from '@platform/types/api.type';
@@ -160,19 +161,20 @@ const loadData = async () => {
       Object.entries({ ...baseQueryForm, ...queryForm })
         .filter(([_, v]) => (v ?? '') !== '' && [v].flat().length)
     ) as <%= table.camelName %>Query;
-  
+
     // 请求分页数据
     const pageData = await <%= table.camelName %>Api.page({
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
       ...query,
     } as PageSelectListDto & <%= table.camelName %>Query);
-      
+
     // 设置响应结果
     tableData.value = pageData.records;
     pagination.total = pageData.total;
-  } catch (error: any) {
-    showErrorMessage(error || '加载列表失败');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : t('G2_MSG_LOAD_FAIL', '加载列表失败');
+    showErrorMessage(msg);
   }
 };
 
@@ -199,7 +201,7 @@ const handleReset = () => {
 <% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
   queryForm.<%= col.camelName %> = <% if (col.type === 'string') { %>''<% } else { %>undefined<% } %>;
 <% }); -%>
-  
+
   pagination.pageNum = 1; // 重置到第一页
   loadData();
 };
@@ -222,7 +224,7 @@ const currentRow = ref<<%= table.camelName %> | null>(null);
 // 明细弹窗引用
 const detailDialogVisible = ref(false);
 
-// 查询数据明细  
+// 查询数据明细
 const handleView = (row: <%= table.camelName %>) => {
   currentRow.value = { ...row };
   detailDialogVisible.value = true;
@@ -230,7 +232,7 @@ const handleView = (row: <%= table.camelName %>) => {
 
 // 删除数据记录
 const handleDelete = (row: <%= table.camelName %>) => {
-  ElMessageBox.confirm(`确认删除<%= table.title %>「${row.id}」吗？`, '提示', {
+  ElMessageBox.confirm(`确认删除<%= table.title %>「${row.id}」吗？`, t('G2_LBL_TIP', '提示'), {
     type: 'warning',
   })
     .then(async () => {
@@ -241,9 +243,10 @@ const handleDelete = (row: <%= table.camelName %>) => {
           pagination.pageNum--;
         }
         await loadData();
-        ElMessage.success('删除成功');
-      } catch (error: any) {
-        showErrorMessage(error || '删除失败');
+        ElMessage.success(t('G2_MSG_DELETE_OK', '删除成功'));
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : t('G2_MSG_DELETE_FAIL', '删除失败');
+        showErrorMessage(msg);
       }
     })
     .catch(() => {});
@@ -258,7 +261,7 @@ const isEdit = ref(false);
 // 修改组件引用
 const editFormRef = ref<FormInstance | null>(null);
 
-// 保存表单状态   
+// 保存表单状态
 const editForm = reactive({
   id: undefined as number | undefined,
 <% table.businessColumns.filter(col => !col.isDeleteFlag).forEach(col => { -%>
@@ -314,11 +317,12 @@ const submitEdit = async () => {
       payload.id = editForm.id;
     }
     await <%= table.camelName %>Api.save(payload);
-    ElMessage.success(isEdit.value ? '更新成功' : '新增成功');
+    ElMessage.success(isEdit.value ? t('G2_MSG_UPDATE_OK', '更新成功') : t('G2_MSG_ADD_OK', '新增成功'));
     await loadData();
     editDialogVisible.value = false;
-  } catch (error: any) {
-    showErrorMessage(error || '保存失败');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : t('G2_MSG_SAVE_FAIL', '保存失败');
+    showErrorMessage(msg);
   }
 };
 
@@ -379,4 +383,3 @@ onMounted(() => {
   margin-top: 16px;
 }
 </style>
-

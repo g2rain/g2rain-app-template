@@ -29,6 +29,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from 'vue';
 import { ArrowDown } from '@element-plus/icons-vue';
+import { useLocaleStore } from '@platform/stores/locale.store';
 import type { FetchDataFunction, RemoteSelectOption } from './types';
 
 // 导出类型供外部使用
@@ -382,6 +383,31 @@ watch(
     } else if (props.prefetchOnOpen) {
       void prefetchDefaultOptions();
     }
+  },
+);
+
+const localeStore = useLocaleStore();
+
+const reloadForLocaleChange = async () => {
+  defaultOptions.value = [];
+  sourceOptions.value = [];
+  options.value = [];
+  lastRemoteQuery.value = null;
+  userTypedSearch.value = false;
+
+  if (props.prefetchOnOpen) {
+    await prefetchDefaultOptions();
+  }
+  if (selectedValue.value !== null && selectedValue.value !== undefined) {
+    await loadInitialOption();
+  }
+};
+
+watch(
+  () => localeStore.locale,
+  (next, prev) => {
+    if (!next || next === prev) return;
+    void reloadForLocaleChange();
   },
 );
 

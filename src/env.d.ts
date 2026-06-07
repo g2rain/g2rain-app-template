@@ -10,6 +10,7 @@ interface ImportMetaEnv {
     readonly VITE_REDIRECT_URI: string;
     readonly VITE_MOCK_ENABLED?: string; // 是否启用 mock（'true' 或 'false'）
     readonly VITE_SERVER_PORT?: string; // 开发服务器端口号
+    readonly VITE_I18N_TAGS?: string; // 国际化文案包 tags（逗号分隔）
 }
 
 interface ImportMeta {
