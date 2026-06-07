@@ -3,16 +3,12 @@
  * 用于处理主应用下发的 Token 刷新结果通知
  */
 
-import type {
-  MicroAppMessage,
-  MicroAppMessageHandler,
-  MicroAppMessageUnion,
-  TokenResponseMessage,
-} from '@/components/micro-app';
+import type { MicroAppMessage, MicroAppMessageHandler, MicroAppMessageUnion, TokenResponseMessage } from '@/components/micro-app';
 import { MicroAppEventType, isTokenResponseMessage } from '@/components/micro-app';
 import type { MicroAppMessageProcessorImpl } from '@/components/micro-app/message-processor';
 import { useAccessTokenStore } from '@platform/stores';
 import { getHttpClient, fetchIamKeyId, fetchIamPublicKey, type Client } from '@/components/http';
+import { refreshBarrier } from '@/components/http/refresh-barrier';
 
 /**
  * 处理主应用下发的 Token 响应消息
@@ -53,11 +49,15 @@ export class TokenResponseDataHandler implements MicroAppMessageHandler {
         fetchIamPublicKey(authClient),
       ]);
       await tokenStore.setTokens(token, tokenKid, iamKeyId, publicKey);
+      refreshBarrier.resolveRefresh();
       console.log('[micro-app][TokenResponseDataHandler] 从主应用获取 token 成功');
     } catch (err) {
       console.error(
         '[micro-app][TokenResponseDataHandler] 设置从主应用获取的 token 失败:',
         err,
+      );
+      refreshBarrier.rejectRefresh(
+        err instanceof Error ? err : new Error('TOKEN_RESPONSE_APPLY_FAILED'),
       );
       throw err;
     }
@@ -68,14 +68,7 @@ export class TokenResponseDataHandler implements MicroAppMessageHandler {
  * 初始化子应用侧的微前端消息处理器
  * 为 TOKEN_RESPONSE 事件注册 TokenResponseDataHandler 处理器
  */
-export function initMicroAppMessageHandlers(
-  processor: MicroAppMessageProcessorImpl,
-): void {
-  processor.registerHandler(
-    MicroAppEventType.TOKEN_RESPONSE,
-    new TokenResponseDataHandler(),
-  );
-  console.log(
-    '[MicroAppMessageHandlers] 子应用 TOKEN_RESPONSE 事件处理已初始化',
-  );
+export function initMicroAppMessageHandlers(processor: MicroAppMessageProcessorImpl): void {
+  processor.registerHandler(MicroAppEventType.TOKEN_RESPONSE, new TokenResponseDataHandler());
+  console.log('[MicroAppMessageHandlers] 子应用 TOKEN_RESPONSE 事件处理已初始化');
 }

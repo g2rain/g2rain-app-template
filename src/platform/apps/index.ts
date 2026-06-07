@@ -1,17 +1,12 @@
 import { getEventAdapter } from './adapter';
-import {
-  MicroAppMessageFactory,
-  type RouteChangeData,
-  type TokenInvalidData,
-  type MicroAppMessageUnion,
-} from '@/components/micro-app';
+import { MicroAppMessageFactory, type RouteChangeData, type TokenInvalidData, type MicroAppMessageUnion } from '@/components/micro-app';
 
 // 仅导出 MicroAppProps（事件相关类型全部在 components/micro-app 中）
 export type { MicroAppProps } from './types';
 
 // 导出适配器相关
 export type { EventAdapter } from '@/components/micro-app';
-export { QiankunSubAppEventAdapter, registerQiankunLifecycle } from './adapter.qiankun';
+export { QiankunSubAppEventAdapter, registerQiankunLifecycle, getQiankunSubAppEventAdapter } from './adapter.qiankun';
 export { getEventAdapter, setEventAdapter, resetEventAdapter } from './adapter';
 export { MicroAppMessageProcessorImpl } from '@/components/micro-app/message-processor';
 export { TokenResponseDataHandler, initMicroAppMessageHandlers } from './message-handlers';
@@ -44,7 +39,13 @@ export function emitRouteChange(data: RouteChangeData): void {
 }
 
 // 导出工具函数
-export { isIntegrateMode, isQianKunMode } from '@shared/utils/mode.util';
+export {
+  isAloneMode,
+  isIntegrateMode,
+  isQiankunRuntime,
+  isQianKunMode,
+  shouldRedirectToMainShellGateway,
+} from '@shared/utils/mode.util';
 
 // 导出初始化函数
 export { initTokenFromProps } from './init';

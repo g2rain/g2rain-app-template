@@ -7,7 +7,7 @@ import type { BaseVo } from '@platform/types/api.type';
 export interface DictItem extends BaseVo {
   parentId: number;
   parentName?: string;
-  dictionaryUsageId: number;
+  usageCode: string;
   code: string;
   name: string;
   description: string;

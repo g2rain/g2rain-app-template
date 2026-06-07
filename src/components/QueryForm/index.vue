@@ -1,11 +1,11 @@
 <template>
   <el-config-provider :locale="locale">
-    <el-form :model="modelValue" :inline="true" class="query-form">
+    <el-form :model="model" :inline="true" class="query-form">
 
       <!-- ID -->
       <el-form-item label="ID">
         <el-input
-          :model-value="modelValue.id"
+          :model-value="model?.id"
           @update:model-value="onIdChange"
           placeholder="请输入ID"
           clearable
@@ -45,7 +45,7 @@
 
       <!-- 隐藏的 sorts 字段（调试用，可保留/删除） -->
       <el-form-item v-show="false">
-        <el-input v-model="sortsString" />
+        <el-input :model-value="sortsString" readonly />
       </el-form-item>
 
       <!-- 业务扩展 -->
@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, isReactive } from 'vue'
 import { ElConfigProvider } from 'element-plus'
 
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
@@ -87,16 +87,11 @@ export interface QueryFormData {
   [key: string]: any
 }
 
-interface Props {
-  modelValue: QueryFormData
-}
-
 interface Emits {
-  (e: 'update:modelValue', value: QueryFormData): void
   (e: 'search'): void
 }
 
-const props = defineProps<Props>()
+const model = defineModel<QueryFormData>({ required: true })
 const emit = defineEmits<Emits>()
 
 /**
@@ -128,28 +123,47 @@ function getBrowserLocale() {
 const locale = getBrowserLocale()
 
 /**
- * 更新字段
+ * 更新字段（兼容父级 reactive：就地修改，避免 v-model 整对象替换导致失活）
  */
-function updateField<K extends keyof QueryFormData>(
-  key: K,
-  value: QueryFormData[K]
-) {
-  emit('update:modelValue', {
-    ...props.modelValue,
-    [key]: value
-  })
+function updateField<K extends keyof QueryFormData>(key: K, value: QueryFormData[K]) {
+  const current = model.value ?? {}
+  if (isReactive(current)) {
+    ;(current as QueryFormData)[key] = value
+    return
+  }
+  model.value = {
+    ...current,
+    [key]: value,
+  }
+}
+
+function clearBaseFields() {
+  const current = model.value
+  if (current && isReactive(current)) {
+    current.id = undefined
+    current.createTime = undefined
+    current.updateTime = undefined
+    current.sorts = undefined
+    return
+  }
+  model.value = {}
 }
 
 /**
  * ID 变化
  */
 function onIdChange(v: string | number) {
-  const value =
-    v === '' || v === null || v === undefined
-      ? undefined
-      : Number(v)
-
-  updateField('id', value)
+  if (v === null || v === undefined) {
+    updateField('id', undefined)
+    return
+  }
+  const raw = typeof v === 'string' ? v.trim() : v
+  if (raw === '') {
+    updateField('id', undefined)
+    return
+  }
+  const num = Number(raw)
+  updateField('id', Number.isNaN(num) ? undefined : num)
 }
 
 /**
@@ -158,8 +172,7 @@ function onIdChange(v: string | number) {
 function useTimeRange(field: 'createTime' | 'updateTime') {
   return computed<[string, string] | null>({
     get() {
-      const value = props.modelValue[field]
-
+      const value = model.value?.[field]
       if (!value || value.length !== 2) {
         return null
       }
@@ -184,16 +197,13 @@ const updateTimeRange = useTimeRange('updateTime')
 /**
  * sorts 字符串（用于隐藏 input，便于调试）
  */
-const sortsString = computed({
-  get: () => {
-    if (!props.modelValue.sorts || props.modelValue.sorts.length === 0) {
-      return ''
-    }
-    return props.modelValue.sorts.join('; ')
-  },
-  set: () => {
-    // 只读，不处理设置
+const sortsString = computed(() => {
+  const sorts = model.value?.sorts
+  if (!sorts || sorts.length === 0) {
+    return ''
   }
+
+  return sorts.join('; ')
 })
 
 /**
@@ -247,8 +257,7 @@ function updateSortFromTable(sort: any) {
  * 重置
  */
 function handleReset() {
-  // 按你采纳的版本，这里重置为 {}，保留扩展字段的灵活性
-  emit('update:modelValue', {})
+  clearBaseFields()
   emit('search')
 }
 

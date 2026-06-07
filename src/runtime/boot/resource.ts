@@ -3,12 +3,8 @@
  * 负责加载和管理应用资源（页面、页面元素、API端点）
  */
 
-import type {
-  ApplicationResources,
-  ResourcePage,
-  ResourcePageElement,
-  ResourceApiEndpoint,
-} from './types';
+import type { ApplicationResources, ResourcePage, ResourcePageElement, ResourceApiEndpoint } from './types';
+import { normalizeResourceApiEndpoint } from './types';
 import { getHttpClient } from '@/components/http';
 
 import { env } from '@shared/env';
@@ -51,7 +47,9 @@ class ResourceManager {
       this.resources = {
         pages: response.data?.pages || [],
         pageElements: response.data?.pageElements || [],
-        apiEndpoints: response.data?.apiEndpoints || [],
+        apiEndpoints: (response.data?.apiEndpoints || []).map((item) =>
+          normalizeResourceApiEndpoint(item as unknown as Record<string, unknown>),
+        ),
       };
 
       console.log('[ResourceManager] 资源加载完成:', {

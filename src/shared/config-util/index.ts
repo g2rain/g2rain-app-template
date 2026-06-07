@@ -3,12 +3,9 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import { parseRouteMap } from './parser/route-map';
 import { parseVueFiles } from './parser/vue';
-import { parseApiFiles } from './parser/api';
 import { generateJsonFiles } from './generator/json';
-import type { ResourcePage, ResourcePageElement, ResourceApiEndpoint } from '@runtime/boot/types';
 
 export interface GenerateConfigOptions {
   routeMapPath: string;
@@ -35,16 +32,15 @@ export async function generateConfig(options: GenerateConfigOptions): Promise<vo
   console.log(`   ✓ 找到 ${pageElements.length} 个页面元素`);
 
   // 3. 解析 API 文件生成 api endpoint
-  console.log('📖 解析 API 文件...');
-  const apiEndpoints = await parseApiFiles(viewsDir, pages);
-  console.log(`   ✓ 找到 ${apiEndpoints.length} 个 API 端点`);
+  // console.log('📖 解析 API 文件...');
+  // const apiEndpoints = await parseApiFiles(viewsDir, pages);
+  // console.log(`   ✓ 找到 ${apiEndpoints.length} 个 API 端点`);
 
   // 4. 生成 JSON 配置文件
   console.log('📝 生成 JSON 配置文件...');
   await generateJsonFiles(outputDir, {
     pages,
     pageElements,
-    apiEndpoints,
   });
   console.log('   ✓ 配置文件生成完成');
 }

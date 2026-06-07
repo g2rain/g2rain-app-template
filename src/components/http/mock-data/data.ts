@@ -8,6 +8,8 @@ import type { Result } from '../types';
 import { mockMenuList, authMockDataMap, IAM_PUBLIC_KEY, IAM_KEY_ID } from './data/auth.data';
 import { testMockDataMap } from './data/test.api';
 import resourcesConfig from '@shared/config-util/config/resources.json';
+import { normalizeResourceApiEndpoint } from '@/runtime/boot/types';
+import type { ResourceApiEndpoint } from '@/runtime/boot/types';
 
 interface ResourcePageMock {
   pageName: string;
@@ -24,17 +26,10 @@ interface ResourcePageElementMock {
   status: string;
 }
 
-interface ResourceApiEndpointMock {
-  apiName: string;
-  apiUrl: string;
-  requestMethod: string;
-  apiTag: string;
-}
-
 interface ApplicationResourcesMock {
   pages: ResourcePageMock[];
   pageElements: ResourcePageElementMock[];
-  apiEndpoints: ResourceApiEndpointMock[];
+  apiEndpoints: ResourceApiEndpoint[];
 }
 
 function createResult<T>(data: T): Result<T> {
@@ -77,7 +72,9 @@ export const mockDataMap: MockDataMap = {
   '/basis/authority/resources': (() => {
     const pages = (resourcesConfig.pages ?? []) as ResourcePageMock[];
     const pageElements = (resourcesConfig.pageElements ?? []) as ResourcePageElementMock[];
-    const apiEndpoints = (resourcesConfig.apiEndpoints ?? []) as ResourceApiEndpointMock[];
+    const apiEndpoints = (resourcesConfig.apiEndpoints ?? []).map((item) =>
+      normalizeResourceApiEndpoint(item as Record<string, unknown>),
+    );
     const resources: ApplicationResourcesMock = {
       pages,
       pageElements,

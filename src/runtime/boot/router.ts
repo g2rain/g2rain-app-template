@@ -65,10 +65,7 @@ function getDynamicComponent(linkPath: string): () => Promise<any> {
  * @returns 组件导入路径（如 '@/views/user/index.vue'）
  */
 function getComponentPathFromLinkPath(linkPath: string): string {
-  const pathParts = linkPath
-    .replace(/^\//, '')
-    .split('/')
-    .filter(Boolean);
+  const pathParts = linkPath.replace(/^\//, '').split('/').filter(Boolean);
 
   if (pathParts.length === 0) {
     return '@/views/Home.vue';

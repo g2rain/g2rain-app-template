@@ -4,7 +4,7 @@
  * - 提供 env / getPathWithContextPath / isMockEnabled 等能力
  */
 
-function getEnvVar(key: string, defaultValue = ''): string {
+export function getEnvVar(key: string, defaultValue = ''): string {
   if (typeof window !== 'undefined' && (window as any)._env_) {
     const runtimeValue = (window as any)._env_[key];
     if (runtimeValue !== undefined && runtimeValue !== null && runtimeValue !== '') {
@@ -28,7 +28,7 @@ function getEnvVar(key: string, defaultValue = ''): string {
   return defaultValue;
 }
 
-function getEnvBoolean(key: string, defaultValue = false): boolean {
+export function getEnvBoolean(key: string, defaultValue = false): boolean {
   const value = getEnvVar(key, '');
   if (value === '') {
     return defaultValue;
@@ -48,6 +48,12 @@ export type SharedEnv = {
   VITE_USE_MOCK: string;
   VITE_BACKEND_ORIGIN: string;
   VITE_SERVER_PORT: string;
+  /** 空=集成意图；alone=独立运行 */
+  VITE_RUN_MODE: string;
+  /** main-shell 子应用网关前缀，默认 /main/redirect */
+  VITE_MAIN_SHELL_REDIRECT_PREFIX: string;
+  /** 开发跨端口时 main-shell 的 origin，如 http://localhost:5173 */
+  VITE_MAIN_SHELL_ORIGIN: string;
 };
 
 /**
@@ -57,8 +63,7 @@ export type SharedEnv = {
  */
 export const env: SharedEnv = new Proxy({} as SharedEnv, {
   get(_target, prop: string | symbol) {
-    if (prop === 'VITE_APPLICATION_CODE')
-      return getEnvVar('VITE_APPLICATION_CODE', 'g2rain-app');
+    if (prop === 'VITE_APPLICATION_CODE') return getEnvVar('VITE_APPLICATION_CODE', 'g2rain-manager-app');
     if (prop === 'VITE_CONTEXT_PATH') return getEnvVar('VITE_CONTEXT_PATH', '/');
     if (prop === 'VITE_TOKEN_END_POINT') return getEnvVar('VITE_TOKEN_END_POINT', '/auth/token');
     if (prop === 'VITE_IAM_BACKEND_ORIGIN') return getEnvVar('VITE_IAM_BACKEND_ORIGIN', '');
@@ -69,6 +74,10 @@ export const env: SharedEnv = new Proxy({} as SharedEnv, {
     if (prop === 'VITE_USE_MOCK') return getEnvVar('VITE_USE_MOCK', 'false');
     if (prop === 'VITE_BACKEND_ORIGIN') return getEnvVar('VITE_BACKEND_ORIGIN', 'http://localhost:8080');
     if (prop === 'VITE_SERVER_PORT') return getEnvVar('VITE_SERVER_PORT', '3000');
+    if (prop === 'VITE_RUN_MODE') return getEnvVar('VITE_RUN_MODE', '');
+    if (prop === 'VITE_MAIN_SHELL_REDIRECT_PREFIX')
+      return getEnvVar('VITE_MAIN_SHELL_REDIRECT_PREFIX', '/main/redirect');
+    if (prop === 'VITE_MAIN_SHELL_ORIGIN') return getEnvVar('VITE_MAIN_SHELL_ORIGIN', '');
 
     if (prop === Symbol.toStringTag) return 'SharedEnv';
     return undefined;
@@ -76,21 +85,16 @@ export const env: SharedEnv = new Proxy({} as SharedEnv, {
 }) as SharedEnv;
 
 export function getPathWithContextPath(subPath: string): string {
-  const contextPath = env.VITE_CONTEXT_PATH;
+  const contextPath = getEnvVar('VITE_CONTEXT_PATH', '/');
+  const base = `/${contextPath}/`.replace(/\/+/g, '/');
 
   if (!subPath) {
-    return contextPath;
+    return base;
   }
 
-  if (contextPath.endsWith('/') && subPath.startsWith('/')) {
-    return contextPath + subPath.substring(1);
-  }
-
-  if (!contextPath.endsWith('/') && !subPath.startsWith('/')) {
-    return contextPath + '/' + subPath;
-  }
-
-  return contextPath + subPath;
+  // 若 subPath 以 / 开头, 直接拼接 subPath(此时 base 去掉尾斜杠)
+  // 否则直接字符串相加, 完全避免了 subPath.slice(1) 产生的新字符串内存分配
+  return (subPath.startsWith('/') ? base.slice(0, -1) : base) + subPath;
 }
 
 export function isMockEnabled(): boolean {

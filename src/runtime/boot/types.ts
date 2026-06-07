@@ -66,28 +66,87 @@ export interface ResourcePageElement {
 
 /**
  * 接口地址表（resource_api_endpoint）
- * 用于定义API接口资源
+ * 与后端 authority resources 中 apiEndpoints 项对齐
  */
 export interface ResourceApiEndpoint {
-  /**
-   * 接口名称
-   */
+  /** 资源接口标识 */
+  id?: number;
+  /** 接口地址状态 */
+  status?: string;
+  /** 服务名称 */
+  serviceName: string;
+  /** 目标地址 */
+  endpoint?: string;
+  /** 路由前缀（contextPath） */
+  routePrefix: string;
+  /** 接口名称 */
   apiName: string;
+  /** 请求方法（如 GET、POST） */
+  method: string;
+  /** 请求路径（不含 routePrefix） */
+  path: string;
+}
 
-  /**
-   * 接口路径（如 '/user'）
-   */
-  apiUrl: string;
+/**
+ * 完整请求路径：routePrefix + path（等同历史字段 apiUrl）
+ */
+export function buildResourceApiUrl(endpoint: Pick<ResourceApiEndpoint, 'routePrefix' | 'path'>): string {
+  const prefix = (endpoint.routePrefix ?? '').trim().replace(/\/$/, '');
+  let p = (endpoint.path ?? '').trim();
+  if (p && !p.startsWith('/')) {
+    p = `/${p}`;
+  }
+  if (!prefix) {
+    return p || '';
+  }
+  if (!p) {
+    return prefix;
+  }
+  return `${prefix}${p}`;
+}
 
-  /**
-   * 请求方法（如 'GET', 'POST', 'PUT', 'DELETE'）
-   */
-  requestMethod: string;
+/**
+ * 兼容旧 mock / 配置（apiUrl、requestMethod、apiTag）与后端新结构
+ */
+export function normalizeResourceApiEndpoint(raw: Record<string, unknown>): ResourceApiEndpoint {
+  if (raw.routePrefix != null || raw.path != null || raw.method != null) {
+    const routePrefix = String(raw.routePrefix ?? '').trim();
+    let path = String(raw.path ?? '').trim();
+    if (path && !path.startsWith('/')) {
+      path = `/${path}`;
+    }
+    if (!path) {
+      path = '/';
+    }
+    return {
+      id: raw.id != null ? Number(raw.id) : undefined,
+      status: raw.status != null ? String(raw.status) : undefined,
+      serviceName: String(raw.serviceName ?? ''),
+      endpoint: raw.endpoint != null ? String(raw.endpoint) : undefined,
+      routePrefix,
+      apiName: String(raw.apiName ?? ''),
+      method: String(raw.method ?? 'GET').toUpperCase(),
+      path,
+    };
+  }
 
-  /**
-   * 接口标签（接口分类）
-   */
-  apiTag: string;
+  const apiUrl = String(raw.apiUrl ?? '').trim();
+  const method = String(raw.requestMethod ?? raw.method ?? 'GET').toUpperCase();
+  const serviceName = String(raw.serviceName ?? raw.apiTag ?? '');
+  const slash = apiUrl.indexOf('/', 1);
+  const routePrefix = slash === -1 ? apiUrl : apiUrl.slice(0, slash);
+  const path = slash === -1 ? '/' : apiUrl.slice(slash);
+
+  return {
+    id: raw.id != null ? Number(raw.id) : undefined,
+    status: raw.status != null ? String(raw.status) : undefined,
+    serviceName,
+    endpoint: raw.endpoint != null ? String(raw.endpoint) : undefined,
+    routePrefix,
+    apiName: String(raw.apiName ?? ''),
+    method,
+    path,
+  };
 }
 
 /**
