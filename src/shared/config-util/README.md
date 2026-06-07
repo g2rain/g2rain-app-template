@@ -5,8 +5,9 @@
 ## 功能
 
 1. **页面资源 (Page Resource)**: 从 `route-map.ts` 中提取页面配置
-2. **页面元素 (Page Element)**: 从 Vue 组件中提取 `v-permission` 指令
+2. **页面元素 (Page Element)**: 从 Vue 组件中提取静态 `v-permission` 指令（按钮、StatusSwitch 等统一写法）
 3. **API 端点 (API Endpoint)**: 从 API 文件中提取接口配置
+## 使用方法
 
 ## 使用方法
 
@@ -65,8 +66,9 @@ npm run build:config
 ## 工作原理
 
 1. **解析 route-map.ts**: 提取 `routeMap` 中的路由配置，生成页面资源
-2. **解析 Vue 文件**: 对每个页面递归扫描 `views/{page}/**/*.vue`，提取静态 `v-permission`（如 `v-permission="'foo:bar'"`）；生成条目的 `pageCode` 为**宿主路由页面**，可与 `pageElementCode` 的前缀不同（例如 `dictionary_usage` 目录下的子组件使用 `dictionary_item:add`）
+2. **解析 Vue 文件**: 对每个页面递归扫描 `views/{page}/**/*.vue`，提取静态 `v-permission`（如 `v-permission="'foo:bar'"`）；`status_update` 类元素类型为 `switch`，其余默认为 `button`；生成条目的 `pageCode` 为**宿主路由页面**，可与 `pageElementCode` 的前缀不同（例如 `dictionary_usage` 目录下的子组件使用 `dictionary_item:add`）
 3. **解析 API 文件**: 扫描 `views/{page}/api.ts`；若存在 `views/{page}/dictionary_item/api.ts`（字典项与字典用途同页），一并解析并归入该页的 `pageCode`
+## 注意事项
 
 ## 注意事项
 

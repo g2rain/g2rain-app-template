@@ -1,8 +1,10 @@
 /**
  * 解析 Vue 文件，提取页面元素（v-permission 指令）
  *
- * 对每个路由页面，递归扫描 views/{routePath}/ 下所有 .vue，收集 v-permission；
+ * 对每个路由页面，递归扫描 views/{routePath}/ 下所有 .vue，收集静态 v-permission；
+ * StatusSwitch 等业务组件与按钮相同，统一写 v-permission="'xxx:status_update'"。
  * pageCode 使用宿主页面（路由对应目录），与 pageElementCode 中「前缀」可以不一致（如抽屉内 dictionary_item:*）。
+ * 对每个路由页面，递归扫描 views/{routePath}/ 下所有 .vue，收集 v-permission；
  */
 
 import * as fs from 'fs';
@@ -33,33 +35,40 @@ function collectVueFiles(dir: string): string[] {
   return out;
 }
 
+function normalizePermissionRaw(raw: string): string | null {
+  const trimmed = raw.trim().replace(/^['"]|['"]$/g, '');
+  if (!trimmed || trimmed.startsWith(':') || trimmed.includes('{{') || trimmed.includes('${')) {
+    return null;
+  }
+  return trimmed.includes(':') ? trimmed : null;
+}
+
+function collectByPatterns(content: string, patterns: RegExp[], codes: Set<string>) {
+  for (const re of patterns) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(content)) !== null) {
+      const code = normalizePermissionRaw(m[1]);
+      if (code) {
+        codes.add(code);
+      }
+    }
+  }
+}
+
 /**
+ * 从模板源码中提取静态权限编码（须含冒号，形如 xxx:yyy）
  * 从模板源码中提取所有静态 v-permission 绑定值（须含冒号，形如 xxx:yyy）
  */
 function extractPermissionCodes(content: string): string[] {
   const codes = new Set<string>();
 
-  const patterns = [
-    // v-permission="'foo:bar'"
+  collectByPatterns(content, [
     /v-permission\s*=\s*"'([^'\\]*)'"/g,
-    // v-permission='"foo:bar"'
     /v-permission\s*=\s*'"([^"\\]*)"'/g,
-    // v-permission="foo:bar"
     /v-permission\s*=\s*"([^"]*)"/g,
-    // v-permission='foo:bar'
     /v-permission\s*=\s*'([^']*)'/g,
-  ];
-
-  for (const re of patterns) {
-    re.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(content)) !== null) {
-      const raw = m[1].trim().replace(/^['"]|['"]$/g, '');
-      if (raw.includes(':')) {
-        codes.add(raw);
-      }
-    }
-  }
+  ], codes);
 
   return [...codes];
 }
@@ -89,11 +98,20 @@ function getActionName(action: string): string {
     search: '查询',
     reset: '重置',
     items: '字典项',
+    status_update: '状态变更',
   };
   return actionMap[action] || action;
 }
 
+function getPageElementType(action: string): ResourcePageElement['pageElementType'] {
+  if (action === 'status_update') {
+    return 'switch';
+  }
+  return 'button';
+}
+
 /**
+ * 解析单个 Vue 文件中的权限编码，归属宿主页面 hostPageCode
  * 解析单个 Vue 文件中的 v-permission，归属宿主页面 hostPageCode
  */
 function parseVueFile(filePath: string, hostPageCode: string): ResourcePageElement[] {
@@ -107,7 +125,7 @@ function parseVueFile(filePath: string, hostPageCode: string): ResourcePageEleme
       parentId: null,
       pageElementName: getActionName(action),
       pageElementCode: permissionCode,
-      pageElementType: 'button',
+      pageElementType: getPageElementType(action),
       pageCode: hostPageCode,
       status: 'ENABLED',
     });
@@ -117,6 +135,7 @@ function parseVueFile(filePath: string, hostPageCode: string): ResourcePageEleme
 }
 
 /**
+ * 解析 views 下各页面目录内全部 Vue 文件中的权限编码
  * 解析 views 下各页面目录内全部 Vue 文件中的 v-permission
  */
 export async function parseVueFiles(
@@ -144,7 +163,7 @@ export async function parseVueFiles(
       const rel = path.relative(viewsDir, vueFilePath);
       const elements = parseVueFile(vueFilePath, page.pageCode);
       if (elements.length > 0) {
-        console.log(`      📄 ${rel} → ${elements.length} 个 v-permission`);
+        console.log(`      📄 ${rel} → ${elements.length} 个权限元素`);
       }
       for (const el of elements) {
         if (!byCode.has(el.pageElementCode)) {

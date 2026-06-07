@@ -12,7 +12,13 @@ export const i18n = createI18n({
   missing: (_locale, key) => key,
 });
 
+function currentI18nLocale(): string {
+  const loc = i18n.global.locale;
+  return typeof loc === 'string' ? loc : loc.value;
+}
+
 export function t(code: string, defaultText?: string): string {
+  void currentI18nLocale();
   if (defaultText !== undefined) {
     return i18n.global.t(code, defaultText);
   }
@@ -49,7 +55,7 @@ export async function loadAndApplyI18nMessages(locale: string, force = false): P
       lastLoadedLocale = trimmed;
     } catch (error) {
       console.warn('[I18n] 文案包加载失败，将使用降级文案:', error);
-      (i18n.global.locale as { value: string }).value = localeCode;
+      (i18n.global.locale as { value: string }).value = trimmed;
     } finally {
       loading = null;
     }

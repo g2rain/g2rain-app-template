@@ -41,4 +41,3 @@ export function getHomeRoutes(): Array<{ path: string; title: string; name?: str
       name: config.name,
     }));
 }
-

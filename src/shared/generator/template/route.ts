@@ -28,7 +28,7 @@ export function updateRouteMap(tables: TableInfo[], routeMapPath: string) {
                         initializer: `{
     component: () => import('${viewPath}'),
     name: '${routeName}',
-    meta: { title: '${title}', requiresAuth: true, showInHome: true },
+    meta: { title: '${title.replace(/'/g, "\\'")}', requiresAuth: true, showInHome: true },
 }`,
                     });
                 }
