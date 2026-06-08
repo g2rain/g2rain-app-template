@@ -65,7 +65,7 @@ export type SharedEnv = {
  */
 export const env: SharedEnv = new Proxy({} as SharedEnv, {
   get(_target, prop: string | symbol) {
-    if (prop === 'VITE_APPLICATION_CODE') return getEnvVar('VITE_APPLICATION_CODE', 'g2rain-manager-app');
+    if (prop === 'VITE_APPLICATION_CODE') return getEnvVar('VITE_APPLICATION_CODE', 'g2rain-app');
     if (prop === 'VITE_CONTEXT_PATH') return getEnvVar('VITE_CONTEXT_PATH', '/');
     if (prop === 'VITE_TOKEN_END_POINT') return getEnvVar('VITE_TOKEN_END_POINT', '/auth/token');
     if (prop === 'VITE_IAM_BACKEND_ORIGIN') return getEnvVar('VITE_IAM_BACKEND_ORIGIN', '');
