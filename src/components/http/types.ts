@@ -161,7 +161,7 @@ export interface HttpClientOptions<ResponseType = Result<any>> {
 /**
  * 预置的 HttpClient 类型
  */
-export type HttpClientType = 'default' | 'auth';
+export type HttpClientType = 'default' | 'auth' | 'docs';
 
 /**
  * 响应类型映射
@@ -170,4 +170,5 @@ export type HttpClientType = 'default' | 'auth';
 export type ResponseTypeMap = {
   default: Result<any>;
   auth: any; // auth 类型直接返回数据，不包装 Result
+  docs: any; // docs 类型直接返回数据，不包装 Result
 };

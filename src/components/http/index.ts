@@ -29,6 +29,11 @@ const httpClientOptionsMap: {
     withAuth: false,
     isDirectResponse: true, // 直接返回数据，不包装 Result
   },
+  docs: {
+    baseURL: `${env.VITE_CONTEXT_PATH}/api`,
+    withAuth: false,
+    isDirectResponse: true, // 直接返回数据，不包装 Result
+  },
 };
 
 /**
@@ -137,6 +142,7 @@ export function updateHttpBaseURLFromProps(): void {
 
   updateHttpBaseURL('default', newDefaultBaseURL);
   updateHttpBaseURL('auth', newAuthBaseURL);
+  updateHttpBaseURL('docs', newDefaultBaseURL);
 }
 
 export type {
