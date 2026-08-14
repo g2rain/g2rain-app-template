@@ -31,6 +31,7 @@
 - 配置说明
 - 构建与镜像
 - 代码质量与测试
+- 使用示例
 - 安全说明
 - 模块说明
 - 职责边界
@@ -164,6 +165,14 @@ flowchart TD
 | --- | --- | --- |
 | Vue 类型检查 | `npm run build` | 构建流程中使用 vue-tsc 检查 Vue 与 TypeScript 类型。 |
 
+## 使用示例
+
+| 示例 | 方式 | 命令 | 说明 |
+| --- | --- | --- | --- |
+|  | CLI | `npx create-g2rain-app <project-name> --context-path <context-path>` | 基于本模板生成新的 Vue 3 + TypeScript 微前端子应用。 |
+|  | npm | `npm run dev` | 启动模板开发服务，预览和调试模板运行时能力。 |
+|  | npm | `npm run build` | 执行类型检查并构建模板前端产物。 |
+
 ## 安全说明
 
 | 主题 | 说明 |
@@ -224,3 +233,4 @@ flowchart TD
 ## 致谢
 
 感谢所有为 g2rain 项目提交 Issue、代码、文档、建议和使用反馈的开发者们！
+
