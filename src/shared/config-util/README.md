@@ -1,80 +1,35 @@
 # 资源配置生成工具
 
-这个工具用于在完成开发后，根据 `route-map.ts` 自动生成应用资源配置文件。
+本工具根据 `src/views/route-map.ts` 和页面中的静态 `v-permission` 生成页面、页面元素资源配置。
 
-## 功能
+完整规则、示例和平台导入注意事项见 [`docs/development/resource-generation.md`](../../../docs/development/resource-generation.md)。
 
-1. **页面资源 (Page Resource)**: 从 `route-map.ts` 中提取页面配置
-2. **页面元素 (Page Element)**: 从 Vue 组件中提取静态 `v-permission` 指令（按钮、StatusSwitch 等统一写法）
-3. **API 端点 (API Endpoint)**: 从 API 文件中提取接口配置
-## 使用方法
-
-## 使用方法
-
-运行以下命令生成配置文件：
+## 命令
 
 ```bash
 npm run build:config
 ```
 
-## 输出文件
+## 当前输入
 
-生成的配置文件位于 `src/shared/config-util/config/` 目录下：
+- `src/views/route-map.ts`
+- route-map 对应页面目录中的 `.vue` 文件
 
-- `resources.json` - 完整的资源配置（包含所有页面、页面元素和 API 端点）
-- `pages.json` - 页面资源列表
-- `page-elements.json` - 页面元素列表
-- `api-endpoints.json` - API 端点列表
+## 当前实际输出
 
-## 配置格式
+输出目录：`src/shared/config-util/config/`
 
-### 页面资源 (ResourcePage)
+- `resources.json`：页面和页面元素的合并结构，其中 `apiEndpoints` 当前为空。
+- `pages.json`：页面资源。
+- `page-elements.json`：页面元素资源。
 
-```json
-{
-  "pageName": "字典配置",
-  "pageCode": "dict",
-  "linkPath": "/dict"
-}
+当前不会生成 `api-endpoints.json`。`parser/api.ts` 虽已存在，但主流程和 JSON 输出尚未启用。
+
+## 静态权限示例
+
+```vue
+<el-button v-permission="'dict:add'">新增</el-button>
+<StatusSwitch v-permission="'dict:status_update'" />
 ```
 
-### 页面元素 (ResourcePageElement)
-
-```json
-{
-  "parentId": null,
-  "pageElementName": "新增",
-  "pageElementCode": "dict:add",
-  "pageElementType": "button",
-  "pageCode": "dict"
-}
-```
-
-### API 端点 (ResourceApiEndpoint)
-
-```json
-{
-  "serviceName": "dict-service",
-  "routePrefix": "/basis",
-  "apiName": "查询",
-  "method": "GET",
-  "path": "/dict/list",
-  "status": "ENABLED"
-}
-```
-
-## 工作原理
-
-1. **解析 route-map.ts**: 提取 `routeMap` 中的路由配置，生成页面资源
-2. **解析 Vue 文件**: 对每个页面递归扫描 `views/{page}/**/*.vue`，提取静态 `v-permission`（如 `v-permission="'foo:bar'"`）；`status_update` 类元素类型为 `switch`，其余默认为 `button`；生成条目的 `pageCode` 为**宿主路由页面**，可与 `pageElementCode` 的前缀不同（例如 `dictionary_usage` 目录下的子组件使用 `dictionary_item:add`）
-3. **解析 API 文件**: 扫描 `views/{page}/api.ts`；若存在 `views/{page}/dictionary_item/api.ts`（字典项与字典用途同页），一并解析并归入该页的 `pageCode`
-## 注意事项
-
-## 注意事项
-
-- 工具会自动跳过根路径 `/` 和 `/home` 路由
-- 页面编码 (`pageCode`) 由路由路径自动生成（如 `/dict` -> `dict`）
-- 权限编码格式应为 `命名空间:action`（如 `dict:add`）；`v-permission` 须为**静态字符串**（含 `"'xxx:yyy'"` 写法），动态表达式无法被扫描
-- 同一 `pageElementCode` 在多个文件中出现时，生成结果会去重为一条
-- API 路径中的模板字符串会被转换为路径参数（如 `/dict/${id}` -> `/dict/:id`）
-
+动态表达式无法被当前解析器扫描。生成后必须 Review JSON Diff，确认新增、修改和删除都符合真实页面与权限设计，再执行 `npm run build` 并在测试环境验证。

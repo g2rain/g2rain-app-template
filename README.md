@@ -1,236 +1,168 @@
-﻿<p align="center">
+<p align="center">
   <img src="https://github.com/g2rain.png" alt="G2Rain" width="180" />
 </p>
 
 # g2rain-app-template
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Vue](https://img.shields.io/badge/Vue-3.5.26-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-7.3.0-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
-[![Qiankun](https://img.shields.io/badge/micro--frontend-Qiankun-1677FF)](https://qiankun.umijs.org/)
+[![Vue](https://img.shields.io/badge/Vue-3.5-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
 
-下一代AI软件开发范式，AI原生Agent平台，开源的企业级SaaS底座。
+g2rain 官方 Vue 3 微前端子应用模板，提供 qiankun 集成、独立运行、SSO/Token、动态资源路由、权限、国际化、HTTP、Mock、业务页面代码生成、资源配置生成和 OpenResty 部署能力。
 
-前端应用创建脚手架，基于 g2rain-app-template 生成前端子应用工程；采集项目名称、Context Path 等初始化参数并完成模板替换
+本仓库是“被生成的应用模板”，不是 CLI 本身。[g2rain-app-cli](https://github.com/g2rain/g2rain-app-cli) 负责复制模板和替换 `{{PROJECT_NAME}}`、`{{CONTEXT_PATH}}`；生成后的应用继续使用本仓库内置命令开发页面和生成资源配置。
 
-[官网](https://www.g2rain.com) · [Issues](https://github.com/g2rain/g2rain/issues) · [Discussions](https://github.com/g2rain/g2rain/discussions)
+[官网](https://www.g2rain.com) · [完整文档](docs/index.md) · [中央 Frontend App Profile](https://github.com/g2rain/g2rain/tree/feature/g2rain-architectur-init/docs/architecture/profiles/frontend-app) · [架构说明](docs/architecture/overview.md) · [代码生成](docs/development/code-generation.md) · [资源配置生成](docs/development/resource-generation.md) · [Issues](https://github.com/g2rain/g2rain/issues) · [Discussions](https://github.com/g2rain/g2rain/discussions)
 
-## 目录
+## 核心能力
 
-- 项目简介
-- 平台定位
-- 业务域说明
-- 功能概览
-- 使用场景
-- 核心流程
-- 流程图
-- 技术栈
-- 环境要求
-- 快速开始
-- 配置说明
-- 构建与镜像
-- 代码质量与测试
-- 使用示例
-- 安全说明
-- 模块说明
-- 职责边界
-- 常见问题
-- 参与贡献
-- 许可证
-- 联系我们
-- 致谢
-
-## 项目简介
-
-前端应用创建脚手架，基于 g2rain-app-template 生成前端子应用工程；采集项目名称、Context Path 等初始化参数并完成模板替换
-
-## 平台定位
-
-该仓库位于 g2rain 前端工程化工具链中，是用于创建前端子应用的脚手架工具。 它主要服务于项目创建阶段，通过模板复制、参数采集与初始化配置生成可继续开发的前端工程，而不是运行时承载业务页面的应用本体。
-
-## 业务域说明
-
-该仓库聚焦于 `前端项目初始化与模板生成`。
-
-核心对象包括：
-- Context Path
-- 模板路径
-- 模板占位符
-- 生成后的前端子应用工程
-- 项目名称
-
-主要流程包括：
-- 项目初始化参数采集流程
-- 模板复制与占位符替换流程
-- 基于 g2rain-app-template 生成项目流程
-- Context Path 写入与初始化配置流程
-
-## 功能概览
-
-| 能力 | 说明 |
+| 能力 | 当前实现 |
 | --- | --- |
-| 项目初始化 | 通过 CLI 收集项目名称、Context Path 等参数，生成标准前端子应用工程。 |
-| 模板复用 | 基于 g2rain-app-template 复制模板文件并执行占位符替换。 |
-| 本地调试与构建 | 提供脚手架本地开发与打包命令，便于维护生成逻辑。 |
+| 微前端 | qiankun `bootstrap`、`mount`、`unmount`、`update`，支持同 entry 多 Tab 的 `appKey` 隔离 |
+| 双运行模式 | `mode=alone` 独立运行；默认作为集成意图，经 main-shell 网关或 qiankun 运行 |
+| 认证 | 独立模式走 SSO，集成模式接收主应用的 `token`、`tokenKid`、`client` 和 `locale` |
+| 动态资源 | 登录后从 `/basis/authority/resources` 加载页面、页面元素与 API 端点 |
+| 工程生成 | 从 `database.sql` 生成 `view/api/type/mock/route` |
+| 资源生成 | 从路由和静态 `v-permission` 生成资源 JSON |
+| 部署 | Node 22 构建，OpenResty 托管静态资源并代理 Gateway/IAM，可选 Lua 签名 |
 
-## 使用场景
+## 目录职责
 
-| 场景 | 说明 |
-| --- | --- |
-| 创建标准前端子应用 | 当团队需要快速创建符合 g2rain 微前端规范的 Vue3 + TypeScript 子应用时使用。 |
-| 统一 Context Path 与项目命名 | 当新应用需要接入 Shell、网关和部署路径时，由脚手架统一收集并写入项目参数。 |
-| 复用组织模板 | 当模板能力升级后，脚手架可继续复用 g2rain-app-template 作为标准工程基线。 |
-
-## 核心流程
-
-| 流程 | 关键步骤 | 代码线索 |
+| 目录 | 职责 | 依赖原则 |
 | --- | --- | --- |
-| 项目创建流程 | 执行 CLI 命令 → 收集项目名称和 Context Path → 定位模板来源 → 复制模板文件 → 替换占位符 → 输出可运行前端工程 | package.json bin、prompt/input logic、template copy |
+| `src/shared` | 环境变量、URL、JWT、通用工具，以及构建期生成器 | 最底层，不依赖应用运行时或业务页面 |
+| `src/components` | HTTP、权限、Loading、微前端消息和通用 UI 组件 | 目标上只依赖 shared 与第三方库 |
+| `src/platform` | Token、语言、i18n、平台错误模型和微前端平台适配 | 可依赖 components/shared，不承载业务页面 |
+| `src/runtime` | 当前应用的认证、HTTP 注入、资源加载、路由和启动编排 | 组合 platform/components/shared，不沉淀跨项目组件 |
+| `src/views` | 业务页面、页面 API、类型、Mock 和路由组件注册表 | 可以使用下层能力，不被可复用层反向依赖 |
+| `nginx` / `lua` | 容器入口、反向代理、静态资源和可选签名链路 | 部署运行时，不存放前端业务逻辑 |
 
-## 流程图
-
-```mermaid
-flowchart TD
-  A[执行 g2rain 前端脚手架] --> B[输入项目名称与 Context Path]
-  B --> C[读取 g2rain-app-template]
-  C --> D[复制模板文件]
-  D --> E[替换项目占位符]
-  E --> F[生成标准前端子应用]
-  F --> G[安装依赖并启动开发服务]
-```
-
-## 技术栈
-
-| 类别 | 说明 |
-| --- | --- |
-| 运行时 | Node.js、npm |
-| 前端框架 | vue、vue-router、pinia、vue-i18n、element-plus |
-| 构建与类型 | vite、typescript、vue-tsc |
-| 微前端 | qiankun、vite-plugin-qiankun |
-| 接口与模拟 | axios、mockjs、vite-plugin-mock |
-| 部署 | Docker、Nginx |
+当前源码仍有少量反向依赖，已登记在[架构偏差](docs/architecture/deviations.md)，不得把它们复制为新代码的默认模式。
 
 ## 环境要求
 
-- Node.js >=22
-- npm
-- Docker
+- Node.js `>= 22`
+- npm（锁文件版本 3；推荐使用仓库锁定依赖）
+- Docker（仅镜像构建需要）
 
 ## 快速开始
 
-| 步骤 | 命令或位置 | 说明 |
-| --- | --- | --- |
-| 安装依赖 | `npm install` | 根据 package.json 安装前端依赖。 |
-| 本地开发 | `npm run dev` | 以源码方式运行脚手架，便于调试项目生成流程。 |
-| 构建产物 | `npm run build` | 执行类型检查与前端构建，生成可发布产物。 |
-| 预览产物 | `npm run preview` | 在本地预览构建后的前端产物。 |
-| 容器化 | `docker build .` | 仓库提供 Dockerfile，可按组织镜像规范封装前端运行镜像。 |
+```bash
+npm ci
+npm run build
+```
 
-版本号以项目构建配置为准，当前识别为 `0.1.0`。
+独立运行最适合开发和排障。PowerShell：
 
-## 配置说明
+```powershell
+$env:VITE_RUN_MODE = 'alone'
+$env:VITE_SERVER_PORT = '3001'
+npm run dev
+```
 
-### 运行配置
+也可以在开发服务地址追加 `?mode=alone`。默认空模式表示“集成意图”；若应用未被 qiankun 挂载，会跳转到 `VITE_MAIN_SHELL_REDIRECT_PREFIX`，这不是启动失败。
 
-| 配置项 | 说明 |
+常用命令：
+
+| 命令 | 说明 |
 | --- | --- |
-| `VITE_*` | 前端运行时环境变量，通常由 Vite 与部署环境共同注入。 |
+| `npm run dev` | 启动 Vite 开发服务器 |
+| `npm run build` | 执行 `vue-tsc` 并构建 `dist` |
+| `npm run preview` | 本地预览构建产物 |
+| `npm run build:generate -- --tables=dict` | 按 SQL 表生成业务页面骨架 |
+| `npm run build:config` | 生成页面和页面元素资源 JSON |
 
-### 路由配置
+## 代码生成
 
-| 配置项 | 说明 |
+先把需要生成的 `CREATE TABLE` 放入 `src/shared/generator/database.sql`，再执行：
+
+```bash
+npm run build:generate -- --tables=dict
+npm run build:generate -- --tables=dict,medicine_users
+npm run build:generate -- --tables=dict --no-mock --no-route
+```
+
+生成器会写入或覆盖 `src/views/<table>/index.vue`、`api.ts`、`type.ts`、`mock.ts`，并按选项更新 `src/views/route-map.ts`。生成前先检查 Git 状态，生成后必须 Review Diff 并执行 `npm run build`。完整参数、交互式演练和覆盖风险见[代码生成](docs/development/code-generation.md)。
+
+## 资源配置生成
+
+完成页面、路由和权限点后运行：
+
+```bash
+npm run build:config
+```
+
+当前实现生成：
+
+- `src/shared/config-util/config/resources.json`
+- `src/shared/config-util/config/pages.json`
+- `src/shared/config-util/config/page-elements.json`
+
+当前 API 端点解析代码尚未接入生成主流程，因此 `resources.json.apiEndpoints` 为空，也不会生成 `api-endpoints.json`。不要仅根据旧说明假设 API 资源已经生成，详见[资源配置生成](docs/development/resource-generation.md)。
+
+## 运行模式
+
+```mermaid
+flowchart LR
+  Direct[浏览器直链] --> Mode{mode=alone?}
+  Mode -->|是| SSO[独立 SSO 与资源初始化]
+  Mode -->|否| Redirect[跳转 main-shell 网关]
+  Shell[main-shell] --> Qiankun[qiankun mount]
+  Qiankun --> Token[注入 Token / Client / Locale]
+  Token --> Resource[加载应用资源]
+  Resource --> Route[组装路由并挂载页面]
+```
+
+集成模式的 `mount` 必须提供 `container` 和非空 `appKey`；Token 初始化先于资源和路由加载。详细时序见[运行时流程](docs/architecture/runtime-flows.md)。
+
+## 配置与部署
+
+最重要的配对配置：
+
+- 构建期 `VITE_CONTEXT_PATH` 与容器运行期 `CONTEXT_PATH` 必须一致。
+- `VITE_APPLICATION_CODE` 必须与平台资源配置的应用编码一致。
+- 容器通过 `GATEWAY_HOST/GATEWAY_PORT` 和 `IAM_HOST/IAM_PORT` 分别代理业务接口与认证接口。
+- `SSO_BASE_URL` 在容器启动时写入 `env-config.js`。
+
+```bash
+docker build --build-arg VITE_BUILD_MODE=production -t g2rain/your-app:latest .
+docker run --rm -p 8080:8080 \
+  -e SERVER_PORT=8080 \
+  -e CONTEXT_PATH=/your-app \
+  -e GATEWAY_HOST=gateway \
+  -e GATEWAY_PORT=8080 \
+  -e IAM_HOST=iam \
+  -e IAM_PORT=8080 \
+  -e SSO_BASE_URL=https://example.com \
+  g2rain/your-app:latest
+```
+
+完整变量和安全要求见[配置](docs/operations/configuration.md)、[构建与部署](docs/operations/deployment.md)和[安全边界](docs/security/security-boundaries.md)。
+
+## 文档导航
+
+| 主题 | 入口 |
 | --- | --- |
-| `Context Path` | 用于控制前端应用在平台或子路径下的访问基准路径。 |
-
-### 部署配置
-
-| 配置项 | 说明 |
-| --- | --- |
-| `nginx/default.conf.template` | 容器运行时 Nginx 配置模板，用于静态资源访问和请求转发。 |
-
-## 构建与镜像
-
-| 目标 | 命令 | 产物 | 说明 |
-| --- | --- | --- | --- |
-| 本地开发 | `npm run dev` | 本地开发服务 | 以源码方式运行脚手架，调试项目生成流程。 |
-| 前端产物 | `npm run build` | `dist` | 执行类型检查与 Vite/TypeScript 构建，生成可发布产物。 |
-| 产物预览 | `npm run preview` | 本地预览服务 | 在本地预览构建后的前端静态产物。 |
-| 容器镜像 | `docker build .` | 前端运行镜像 | 基于 Dockerfile 封装静态前端运行镜像。 |
-| 构建脚本 | `./build.sh` | 脚本定义的构建结果 | 执行仓库提供的构建脚本，承载组织内镜像或发布流程。 |
-
-## 代码质量与测试
-
-| 检查项 | 命令 | 说明 |
-| --- | --- | --- |
-| Vue 类型检查 | `npm run build` | 构建流程中使用 vue-tsc 检查 Vue 与 TypeScript 类型。 |
-
-## 使用示例
-
-| 示例 | 方式 | 命令 | 说明 |
-| --- | --- | --- | --- |
-|  | CLI | `npx create-g2rain-app <project-name> --context-path <context-path>` | 基于本模板生成新的 Vue 3 + TypeScript 微前端子应用。 |
-|  | npm | `npm run dev` | 启动模板开发服务，预览和调试模板运行时能力。 |
-|  | npm | `npm run build` | 执行类型检查并构建模板前端产物。 |
-
-## 安全说明
-
-| 主题 | 说明 |
-| --- | --- |
-| 模板来源 | 脚手架生成项目时应使用可信模板来源，避免将未知脚本或配置写入新工程。 |
-
-## 模块说明
-
-| 模块 | 职责说明 | 代码线索 |
-| --- | --- | --- |
-| 命令入口 | 提供脚手架命令入口，驱动项目创建流程。 | package.json scripts、CLI entry |
-| 参数采集 | 采集项目名称、Context Path 等初始化参数。 | prompt/input logic |
-| 模板生成 | 复制 g2rain-app-template 并执行占位符替换，生成标准前端子应用。 | g2rain-app-template、template copy |
-
-## 职责边界
-
-该仓库主要负责：
-- 负责前端子应用工程初始化
-- 负责模板复制、参数化生成与基础配置写入
-- 负责项目创建阶段的交互式输入采集
-
-该仓库默认不负责：
-- 不负责生成后项目的具体业务实现
-- 不负责运行时微前端宿主逻辑
-- 不负责后端服务逻辑
-
-## 常见问题
-
-| 问题 | 可能原因 | 处理建议 |
-| --- | --- | --- |
-| 命令无法执行 | 脚手架未完成依赖安装、未构建或 bin 链接未生效。 | 先安装依赖并确认 package.json bin 配置，再使用 npm link 或构建后的命令入口验证。 |
-| 生成项目路径不符合预期 | 项目名称、Context Path 或模板路径参数输入不正确。 | 重新执行脚手架并检查输入参数及 G2RAIN_TEMPLATE_PATH 等模板路径配置。 |
+| 项目事实与 Agent 入口 | [docs/project.yaml](docs/project.yaml) · [AGENTS.md](AGENTS.md) |
+| 中央基线与项目偏差 | [Frontend App 1.0.0-draft](https://github.com/g2rain/g2rain/tree/feature/g2rain-architectur-init/docs/architecture/profiles/frontend-app) · [本项目偏差](docs/architecture/deviations.md) |
+| 架构、层次和依赖 | [架构概览](docs/architecture/overview.md) · [层次职责](docs/architecture/layers.md) · [偏差](docs/architecture/deviations.md) |
+| 页面和复用能力 | [Views 规范](docs/development/views-conventions.md) · [Components 与 Platform](docs/development/components-and-platform.md) |
+| 生成能力 | [代码生成](docs/development/code-generation.md) · [资源配置生成](docs/development/resource-generation.md) |
+| 开发和交付 | [本地开发](docs/development/local-development.md) · [完成定义](docs/development/definition-of-done.md) · [部署](docs/operations/deployment.md) |
 
 ## 参与贡献
 
-我们欢迎所有形式的贡献：Issue 反馈、文档改进、功能建议与代码提交。
+使用 `feature/<name>` 或 `fix/<name>` 分支向 `develop` 提交，测试环境验证后再合并到 `main`。修改模板会影响所有后续生成项目，请尽量补充必要测试和文档，并确保 `npm run build` 通过。
 
-推荐流程：
+## 许可证与联系
 
-1. Fork 本仓库。
-2. 创建特性分支：`git checkout -b feature/your-feature-name`。
-3. 提交更改：`git commit -m "Add some feature"`。
-4. 推送分支：`git push origin feature/your-feature-name`。
-5. 提交 Pull Request。
+本项目基于 [Apache License 2.0](LICENSE) 开源。
 
-代码贡献前请尽量补充必要的测试和文档，并确保构建、测试与静态检查通过。
+- 官网：[g2rain.com](https://www.g2rain.com)
+- Issues：[GitHub Issues](https://github.com/g2rain/g2rain/issues)
+- 讨论：[GitHub Discussions](https://github.com/g2rain/g2rain/discussions)
+- 安全问题：[Security Policy](SECURITY.md)
+- 邮箱：g2rain_developer@163.com
 
-## 许可证
-
-本项目基于 [Apache 2.0许可证](https://github.com/g2rain/g2rain-common/blob/main/LICENSE) 开源。
-
-## 联系我们
-
-- Issues: [GitHub Issues](https://github.com/g2rain/g2rain/issues)
-- 讨论: [GitHub Discussions](https://github.com/g2rain/g2rain/discussions)
-- 邮箱: g2rain_developer@163.com
-
-## 致谢
-
-感谢所有为 g2rain 项目提交 Issue、代码、文档、建议和使用反馈的开发者们！
-
+感谢所有为 g2rain 提交 Issue、代码、文档、建议和使用反馈的开发者。
