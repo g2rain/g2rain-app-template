@@ -2,6 +2,8 @@
 
 `src/shared/generator` 是一个基于 `database.sql` 的前端代码生成器，主要用于快速生成业务页面骨架与配套文件，减少重复手工编写。
 
+完整的安全工作流、交互式演练和生成后 Review 要求见 [`docs/development/code-generation.md`](../../../docs/development/code-generation.md)。
+
 ## 目录结构
 
 - `cli.ts`: 命令行入口
