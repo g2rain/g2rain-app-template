@@ -106,10 +106,10 @@ runtime 无法作为独立应用运行时复用。建议由 views 导出页面�
 
 ### 状态
 
-待 CLI 与模板协同修复。
+已于 2026-09-03 在 g2rain-app-cli 修复。
 
 ### 说明
 
-`g2rain-app-cli` 当前会复制本仓库的 `AGENTS.md` 和 `docs/**`，但只替换固定业务文件与 `package.json.name`。实测生成项目的 `docs/project.yaml` 仍标识为 `g2rain-app-template`，其他文档也可能继续使用模板维护语境。
+`g2rain-app-cli` 现在会按明确清单转换生成项目的包信息、README、Agent 入口与项目文档身份，并在 `docs/project.yaml` 记录 CLI 版本、模板仓库、模板 Commit 和 Context Path。生成项目不再把 `g2rain-app-template` 当作自身仓库身份；指向本模板的来源链接会继续保留。
 
-模板与 CLI 应共同定义生成项目文档 manifest，写入真实项目名、仓库标识、中央 Profile 版本、CLI 版本和模板 Ref；生成集成测试应确认业务 App 不再携带模板仓库身份。修复前，使用模板创建项目后必须人工校正文档元数据。
+CLI 已增加隔离生成契约测试，验证真实项目名、推导的 g2rain 仓库地址、业务 App 文档身份和模板来源。模板身份文件或元数据结构变化时，仍须同步 CLI 的显式转换清单和测试 fixture。
