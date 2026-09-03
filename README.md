@@ -11,7 +11,7 @@
 
 g2rain 官方 Vue 3 微前端子应用模板，提供 qiankun 集成、独立运行、SSO/Token、动态资源路由、权限、国际化、HTTP、Mock、业务页面代码生成、资源配置生成和 OpenResty 部署能力。
 
-本仓库是“被生成的应用模板”，不是 CLI 本身。[g2rain-app-cli](https://github.com/g2rain/g2rain-app-cli) 负责复制模板和替换 `{{PROJECT_NAME}}`、`{{CONTEXT_PATH}}`；生成后的应用继续使用本仓库内置命令开发页面和生成资源配置。
+本仓库是“被生成的应用模板”，不是 CLI 本身。[g2rain-app-cli](https://github.com/g2rain/g2rain-app-cli) 负责复制模板、替换 `{{PROJECT_NAME}}` 与 `{{CONTEXT_PATH}}`，并将包信息和项目文档转换为业务 App 身份；生成后的应用继续使用本仓库内置命令开发页面和生成资源配置。
 
 [官网](https://www.g2rain.com) · [完整文档](docs/index.md) · [中央 Frontend App Profile](https://github.com/g2rain/g2rain/tree/feature/g2rain-architectur-init/docs/architecture/profiles/frontend-app) · [架构说明](docs/architecture/overview.md) · [代码生成](docs/development/code-generation.md) · [资源配置生成](docs/development/resource-generation.md) · [Issues](https://github.com/g2rain/g2rain/issues) · [Discussions](https://github.com/g2rain/g2rain/discussions)
 
