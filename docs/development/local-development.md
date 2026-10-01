@@ -14,6 +14,8 @@ npm ci
 
 不要在没有依赖升级需求时用 `npm install` 重写锁文件。模板包名仍是 `{{PROJECT_NAME}}` 属于正常占位符。
 
+`create-g2rain-app` 以 `file:../g2rain-app-cli` 声明。本地 `npm install` / `npm run build:generate` / `npm run build:config` 需要同级检出 [`g2rain-app-cli`](https://github.com/g2rain/g2rain-app-cli)（目录布局为 `.../g2rain-app-cli` 与 `.../g2rain-app-template` 或生成后的业务 App 并列）。Docker 构建使用最小 stub，不依赖真实 CLI。
+
 ## 独立运行
 
 PowerShell：
@@ -45,7 +47,7 @@ $env:VITE_MAIN_SHELL_REDIRECT_PREFIX = '/main/redirect'
 npm run dev
 ```
 
-qiankun mount 至少需要 `container` 和唯一 `appKey`。正常业务联调还需要 `token`、`tokenKid`，以及按认证方案提供的 `client`。
+qiankun mount 至少需要 `container`、`applicationCode`、`viewId`、`instanceId`，且 `appKey === instanceId`。认证经 Auth Bridge 定向消息完成，不经公开 props；公开 Context 不含 Token。
 
 ## 构建与预览
 

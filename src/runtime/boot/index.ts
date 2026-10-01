@@ -4,13 +4,15 @@
  */
 
 import { watch, type WatchStopHandle } from 'vue';
+import type { Router } from 'vue-router';
 import { resourceManager } from './resource';
 import { initRoutesFromResources } from './router';
 import { useAccessTokenStore } from '@platform/stores';
 import { env } from '@shared/env';
 import { isQiankunRuntime } from '@shared/utils/mode.util';
 import { sso } from '@runtime/auth';
-import { initHttp } from '@runtime/http';
+import { initHttp } from '@runtime/http/setup';
+import { updateRouter } from '@runtime/router';
 
 export * from './types';
 export * from './resource';
@@ -102,26 +104,24 @@ export function teardownTokenExpiredWatcher(): void {
   tokenExpiredWatchStop = null;
 }
 
-/**
- * 初始化应用资源
- * 使用环境变量 VITE_APPLICATION_CODE 作为应用唯一标识
- *
- * 如果当前路径是 SSO 回调路径，会启动一个 watch 监听登录状态变化，
- * 当 token 为已登录时自动初始化资源并更新路由
- */
-export async function initApplicationResources(): Promise<void> {
-  // 检查当前路径是否为 SSO 回调路径
+export function isSsoCallbackPath(): boolean {
   const currentPath = window.location.pathname;
   const contextPath = env.VITE_CONTEXT_PATH || '';
-  const isSSOCallback =
+  return (
     currentPath === '/sso_callback' ||
-    currentPath === contextPath + '/sso_callback' ||
-    (contextPath && currentPath === contextPath + 'sso_callback') ||
-    currentPath.endsWith('/sso_callback');
+    currentPath === `${contextPath}/sso_callback` ||
+    (!!contextPath && currentPath === `${contextPath}sso_callback`) ||
+    currentPath.endsWith('/sso_callback')
+  );
+}
 
-  // 如果是 SSO 回调路径，启动 watch 监听登录状态
-  if (isSSOCallback) {
-    if ((import.meta.env as any).DEV) {
+/**
+ * 初始化应用资源。
+ * SSO 回调路径会等登录完成后，用本次 mount 传入的 Router 更新资源路由。
+ */
+export async function initApplicationResources(router?: Router): Promise<void> {
+  if (isSsoCallbackPath()) {
+    if (import.meta.env.DEV) {
       console.log('[initApplicationResources] 检测到 SSO 回调路径，启动登录状态监听');
     }
 
@@ -131,50 +131,38 @@ export async function initApplicationResources(): Promise<void> {
       let unwatch: WatchStopHandle | null = null;
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-      // 初始化资源的函数
       const doInitResources = async () => {
         if (resolved) return;
 
         try {
-          if ((import.meta.env as any).DEV) {
+          if (import.meta.env.DEV) {
             console.log('[initApplicationResources] 检测到登录状态，开始初始化资源');
           }
 
-          // 初始化资源
           await resourceManager.init();
-
-          // 获取路由实例并更新路由
-          const { getShell, STANDALONE_SHELL_KEY } = await import('@/runtime/micro-shells');
-          const { updateRouter } = await import('@runtime/router');
-          const router = getShell(STANDALONE_SHELL_KEY).router;
 
           if (router) {
             const resourceRoutes = await initRoutesFromResources();
             updateRouter(router, resourceRoutes);
 
-            if ((import.meta.env as any).DEV) {
+            if (import.meta.env.DEV) {
               console.log('[initApplicationResources] 资源初始化完成，路由已更新');
             }
           }
 
           resolved = true;
-          if (unwatch) {
-            unwatch();
-            unwatch = null;
-          }
+          unwatch?.();
+          unwatch = null;
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;
           }
-
           resolve();
         } catch (error) {
           console.error('[initApplicationResources] 资源初始化失败:', error);
           resolved = true;
-          if (unwatch) {
-            unwatch();
-            unwatch = null;
-          }
+          unwatch?.();
+          unwatch = null;
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;
@@ -183,26 +171,21 @@ export async function initApplicationResources(): Promise<void> {
         }
       };
 
-      // 立即检查一次（可能 token 已经设置好了）
       if (accessTokenStore.isLogin) {
         void doInitResources();
         return;
       }
 
-      // 如果 10 秒后仍未登录，可能是 SSO 回调失败，直接 reject
       timeoutId = setTimeout(() => {
         if (!resolved && !accessTokenStore.isLogin) {
           console.warn('[initApplicationResources] SSO 回调超时，未检测到登录状态');
           resolved = true;
-          if (unwatch) {
-            unwatch();
-            unwatch = null;
-          }
+          unwatch?.();
+          unwatch = null;
           reject(new Error('SSO 回调超时，未检测到登录状态'));
         }
       }, 10000);
 
-      // 监听登录状态变化
       unwatch = watch(
         () => accessTokenStore.isLogin,
         (isLogin) => {
@@ -223,7 +206,7 @@ export async function initApplicationResources(): Promise<void> {
     throw error;
   }
 
-  if ((import.meta.env as any).DEV) {
+  if (import.meta.env.DEV) {
     console.log('[initApplicationResources] 正常流程：用户已登录，开始初始化资源');
   }
 

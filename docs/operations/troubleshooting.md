@@ -10,10 +10,14 @@ Vite server 当前读取进程环境变量并回退 `3001`。在启动命令前�
 
 ## qiankun 无法挂载
 
-- 检查 mount props 是否有 `container` 和非空 `appKey`。
+- 检查 mount props 是否有 `container`、`applicationCode`、`viewId`、`instanceId`，且 `appKey === instanceId`。
 - 检查 Vite base、main-shell entry 和 activeRule。
-- 查看 Token 初始化、资源加载和 Router 初始化的先后错误。
-- 多 Tab 问题检查是否错误复用了 appKey。
+- 查看 Auth Bridge、Token 初始化、资源加载和 Router 初始化的先后错误。
+- 多 Tab 问题检查是否复用了尚未 unmount 的同一个 `instanceId`。同一实例未卸载时再次 mount 会失败。
+
+## 打开业务页时先闪一下首页 `/`
+
+集成模式 MemoryHistory 默认落在 `/`。`main.ts` 必须在 `vueApp.mount` 之前调用 `settleInitialRoute(initialRoute)`；若先 mount 再 replace，会先画出 `Home.vue` 再切到目标页。
 
 ## 页面空白或动态路由找不到组件
 
@@ -43,4 +47,4 @@ Vite server 当前读取进程环境变量并回退 `3001`。在启动命令前�
 
 ## SSO 回调循环
 
-核对公开 Origin、Context Path、`VITE_REDIRECT_URI`、IAM 客户端登记值和 main-shell 网关路径。不要在日志中打印完整 Token 排查问题。
+核对公开 Origin、Context Path、`VITE_REDIRECT_URI`、IAM 客户端登记值和 main-shell 网关路径。不要在日志中打印完整 Token 排查问题。独立模式必须从 `/?mode=alone` 重新登录；旧的 `sso_callback` 地址无法恢复私钥。

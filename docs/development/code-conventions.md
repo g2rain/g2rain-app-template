@@ -3,6 +3,9 @@
 ## TypeScript 与 Vue
 
 - 使用 Vue 3 Composition API 和 `<script setup lang="ts">`。
+- 与 `defineModel` / 整对象 `v-model` 双向绑定的状态优先使用 `ref`（例如 `QueryForm` 的 `baseQueryForm`）；不要用 `const reactive` 承接整对象赋值。
+- 通用 UI（`QueryForm`、`TableSort`、`RemoteSelect` 等）从 `@g2rain/ui` 导入，不经 `@/components` 转发。
+- 仅在「只改对象内部字段、不整对象替换」时使用 `reactive`。
 - 不新增 `.js` / `.jsx` 业务文件；`tsconfig` 已排除它们。
 - 保持 `strict`，公共函数、props、emits、API 入参与返回值显式声明类型。
 - 新代码优先 `unknown`、泛型和类型守卫，不新增无边界 `any`。
@@ -27,9 +30,9 @@
 
 ## 状态、认证与多实例
 
-- 集成模式 Token 来自主应用，不建立冲突的本地认证状态。
+- 集成模式 Token 经 Auth Bridge 定向消息写入，不经公开 props，也不建立冲突的本地认证状态。
 - 独立模式才执行完整 SSO 和本地持久化链路。
-- qiankun 状态以 `appKey` 隔离；不得用单一全局 Router/Vue 实例覆盖多个 Tab。
+- qiankun 按 `instanceId` 隔离 Vue 和 Router；`appKey` 仅作须等于 `instanceId` 的迁移期别名。不得用单一全局 Router/Vue 实例覆盖多个 Tab。
 - mount、update、unmount 的监听、Watcher、Router 和 DOM 操作必须配对。
 - 不在日志中输出完整 Token、Client 私钥或用户敏感资料。
 

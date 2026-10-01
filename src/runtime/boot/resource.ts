@@ -5,7 +5,7 @@
 
 import type { ApplicationResources, ResourcePage, ResourcePageElement, ResourceApiEndpoint } from './types';
 import { normalizeResourceApiEndpoint } from './types';
-import { getHttpClient } from '@/components/http';
+import { getHttpClient } from '@runtime/http';
 
 import { env } from '@shared/env';
 import { ApiPermission, PageElementPermission, type ApiPermissionProvider, type PageElementPermissionProvider } from '@/components/permission';

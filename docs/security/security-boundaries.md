@@ -2,7 +2,7 @@
 
 ## 认证与授权
 
-- 集成模式信任 main-shell 传入 Token 的前提是子应用确实由受信 shell 挂载；不能把任意 Window 全局值当作服务端授权依据。
+- 集成模式信任 main-shell Auth Bridge 下发 Token 的前提是子应用确实由受信 shell 挂载；不能把任意 Window 全局值或公开 props 当作服务端授权依据。
 - 独立模式通过 IAM SSO 获得 Token，Redirect URI 必须精确注册并校验返回状态。
 - 前端 `v-permission`、资源页面和 `hasApiPermission` 只控制 UI，Gateway 和领域服务必须执行最终认证、租户和权限校验。
 - Token 过期、刷新失败和 qiankun update/unmount 要清理状态，避免跨 Tab 或跨用户复用。
@@ -33,7 +33,7 @@
 - 使用 `npm ci` 和受 Review 的 lockfile。
 - 升级 Vue/Vite/qiankun/HTTP/crypto 依赖时检查安全公告、Node engines、Peer Dependencies 和生成项目兼容性。
 - Docker 基础镜像和仓库内 luaossl tar 包需要可追踪版本与来源，发布时扫描镜像。
-- 不运行不可信 SQL 输入或 EJS 模板；生成器具有本地文件覆盖能力。
+- 不运行不可信 SQL 输入；`create-g2rain-app` 生成器具有本地文件覆盖能力，执行前确认 Git 状态。
 
 ## 漏洞报告
 

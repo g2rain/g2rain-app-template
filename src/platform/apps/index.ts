@@ -49,4 +49,5 @@ export {
 
 // 导出初始化函数
 export { initTokenFromProps } from './init';
+export { requestSharedAuth } from './shared-auth-bridge';
 

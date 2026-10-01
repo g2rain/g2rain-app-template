@@ -1,6 +1,6 @@
 import { exportJWK, generateKeyPair, JWK, importSPKI } from 'jose';
 import { Generator } from '@shared/utils/random.util';
-import type { Client } from '@/components/http';
+import type { DpopClient as Client } from '@g2rain/http';
 
 // 生成密钥对 - 支持降级方案
 export async function generateKey() {

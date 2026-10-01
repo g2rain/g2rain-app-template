@@ -1,8 +1,8 @@
 # 架构概览
 
-本项目试点采用 g2rain [`frontend-app 1.0.0-draft`](https://github.com/g2rain/g2rain/tree/feature/g2rain-architectur-init/docs/architecture/profiles/frontend-app)。中央 Profile 管理跨 App 的分层、运行、生成与安全规则；本页描述 g2rain-app-template 的具体落地。
+本项目试点采用 g2rain [`frontend-app 1.0.0-draft`](https://github.com/g2rain/g2rain/tree/feature/g2rain-architectur-init/docs/architecture/profiles/frontend-app)。中央 Profile 管理跨 App 的分层、运行、生成与安全规则；本页描述本模板的具体落地。
 
-g2rain-app-template 是生成后即可运行的 Vue 3 子应用模板。外部 CLI 负责复制和替换占位符；本仓库负责生成项目的运行架构、平台能力、业务页面约定、生成工具和部署基线。相对中央基线的当前偏差见[架构偏差](deviations.md)。
+g2rain-app-template 是官方 Vue 3 微前端子应用工程模板。本仓库负责模板运行架构、平台能力、示例页面、生成工具和部署配置。相对中央基线的当前偏差见[架构偏差](deviations.md)。
 
 ## 系统关系
 
@@ -16,7 +16,7 @@ flowchart LR
   Gateway --> Services[Basis / Department / 其他服务]
 ```
 
-- 集成模式由 main-shell 加载子应用并传递 Token、Client、语言和初始路由。
+- 集成模式由 main-shell 加载子应用并下发身份字段与 Locale；Token 经 Auth Bridge 定向消息传递。
 - 独立模式由子应用自行发起 SSO，并在获得 Token 后加载应用资源。
 - 业务服务通过 Gateway 暴露；IAM 的认证接口走独立代理路径。
 - `/basis/authority/resources` 返回页面、页面元素和 API 端点，运行时据此组装路由与权限。
@@ -43,15 +43,15 @@ flowchart TD
 
 ## 核心事实
 
-- `src/main.ts` 是组合根，负责双模式判断、Vue/Pinia/i18n/Element Plus 装配和 qiankun 生命周期注册。
-- `src/platform/apps/adapter.qiankun.ts` 当前承载 qiankun mount/update/unmount 协调。
-- `src/runtime/boot` 在 Token 可用后初始化 HTTP、资源、权限和路由。
+- `src/main.ts` 是组合根。模块加载时创建一次 `createStandardSubPlatform`，独立模式和 qiankun 都调用同一份 `definition.mount` / `unmount`。
+- `src/platform/apps/adapter.qiankun.ts` 只注册 qiankun 生命周期，并把 props 交给组合根。
+- `src/runtime/boot` 在 Token 可用后初始化 HTTP、资源、权限和路由。`tokenExpired` 监听用引用计数，最后一个实例卸载才停止。
 - `src/views/route-map.ts` 是后端页面资源 `linkPath` 到前端组件的静态注册表。
-- `src/shared/generator` 和 `src/shared/config-util` 是构建期工具，不参与浏览器业务运行时。
+- `scripts/database.sql` 与 `src/shared/config-util/config` 是构建输入/产物；引擎由 `create-g2rain-app` 提供，不参与浏览器业务运行时。
 
 ## 职责边界
 
-本仓库负责模板默认能力和生成后工程结构，不负责：
+本仓库负责当前业务应用能力和工程结构，不负责：
 
 - 外部 `create-g2rain-app` CLI 的参数交互与文件复制实现。
 - main-shell 的菜单、Tab 和子应用注册管理。

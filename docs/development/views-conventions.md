@@ -16,6 +16,7 @@ src/views/<module>/
 
 - 负责页面组合和用户交互，不直接定义 HTTP 客户端实现。
 - 使用同目录 `api.ts` 和 `type.ts`。
+- `QueryForm` 的 `v-model`（如 `baseQueryForm`）使用 `ref`，脚本中通过 `.value` 读写；从 `@g2rain/ui` 导入，生成模板 `view.ejs` 已按此约定。
 - 通用交互优先使用 components，平台状态使用 platform，启动/认证适配使用 runtime。
 - 页面之间不直接深度引用；共享业务能力先明确所有权，再选择 runtime 或独立模块。
 - 权限点使用静态 `v-permission="'namespace:action'"`，动态表达式当前无法被资源生成器扫描。

@@ -1,7 +1,7 @@
 /**
  * 机构 API（供 OrganSelect / ApiSelect 复用）
  */
-import { getHttpClient } from '@/components/http';
+import { getHttpClient } from '@runtime/http';
 import type { OrganIdNameMap } from './type';
 
 export class OrganApi {
