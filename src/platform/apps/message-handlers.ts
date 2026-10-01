@@ -7,8 +7,7 @@ import type { MicroAppMessage, MicroAppMessageHandler, MicroAppMessageUnion, Tok
 import { MicroAppEventType, isTokenResponseMessage } from '@/components/micro-app';
 import type { MicroAppMessageProcessorImpl } from '@/components/micro-app/message-processor';
 import { useAccessTokenStore } from '@platform/stores';
-import { getHttpClient, fetchIamKeyId, fetchIamPublicKey, type Client } from '@/components/http';
-import { refreshBarrier } from '@/components/http/refresh-barrier';
+import { getHttpClient, fetchIamKeyId, fetchIamPublicKey, refreshBarrier, type Client } from '@runtime/http';
 
 /**
  * 处理主应用下发的 Token 响应消息
@@ -36,7 +35,6 @@ export class TokenResponseDataHandler implements MicroAppMessageHandler {
     // 如果主应用返回了 client，先设置 client
     if (client) {
       tokenStore.client = client as Client;
-      console.log('[micro-app][TokenResponseDataHandler] 从主应用获取 client 成功');
     }
 
     try {
@@ -50,11 +48,9 @@ export class TokenResponseDataHandler implements MicroAppMessageHandler {
       ]);
       await tokenStore.setTokens(token, tokenKid, iamKeyId, publicKey);
       refreshBarrier.resolveRefresh();
-      console.log('[micro-app][TokenResponseDataHandler] 从主应用获取 token 成功');
     } catch (err) {
       console.error(
-        '[micro-app][TokenResponseDataHandler] 设置从主应用获取的 token 失败:',
-        err,
+        '[micro-app][TokenResponseDataHandler] 设置从主应用获取的 token 失败',
       );
       refreshBarrier.rejectRefresh(
         err instanceof Error ? err : new Error('TOKEN_RESPONSE_APPLY_FAILED'),

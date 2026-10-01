@@ -35,25 +35,29 @@ SSO 回调路径会先使用系统路由挂载回调组件，完成资源初始�
 ```mermaid
 sequenceDiagram
   participant Shell as main-shell
-  participant Adapter as platform/apps
+  participant Adapter as adapter.qiankun
   participant Main as main.ts
+  participant Bridge as shared-auth-bridge
+  participant Sub as platform/sub
   participant Token as token.store
-  participant Boot as runtime/boot
 
   Shell->>Adapter: mount(props)
-  Adapter->>Adapter: 校验 container / appKey
-  Adapter->>Main: render(container, initialRoute, appKey)
-  Main-->>Adapter: Vue app + 空系统 Router
-  Adapter->>Token: 初始化 token / tokenKid / client
-  Adapter->>Boot: 加载资源并更新 Router
-  Adapter->>Main: app.mount(container)
+  Adapter->>Main: handlers.mount(props)
+  Main->>Main: resolveSubHostProps（含 initialRoute）
+  Main->>Bridge: requestSharedAuth(REQUEST_TOKEN)
+  Shell-->>Bridge: TOKEN_RESPONSE(token,tokenKid,client)
+  Bridge->>Token: initTokenFromProps（仅内存）
+  Main->>Sub: definition.mount(instanceId, context, container)
+  Sub->>Sub: initApplicationResources + 资源路由
+  Sub->>Sub: settleInitialRoute(initialRoute) 再 Vue mount（避免先闪 /）
   Shell->>Adapter: update(props)
-  Adapter->>Token: 更新 Token / Locale
+  Main->>Sub: definition.update(locale / initialRoute)
   Shell->>Adapter: unmount(props)
-  Adapter->>Main: app.unmount + Router/Shell/Watcher 清理
+  Main->>Sub: definition.unmount(instanceId)
+  Main->>Main: 引用计数减一，最后一个实例才停 Token 监听
 ```
 
-`appKey` 是同 entry 多 Tab 隔离键，不可用应用编码代替。`unmount` 必须配对清理 Router、Shell 和 Token 过期监听引用。
+实例键必须用 `instanceId`；`appKey` 仅作迁移期别名且须等于 `instanceId`。不要用应用编码当实例键。公开 Context 不含 Token。集成模式在 `initApplicationResources` 之前必须已有有效认证态（Auth Bridge）；认证失败须抛错，禁止静默空路由。`unmount` 只释放该实例的 Vue、Router 和 `afterEach`，不销毁共享 HTTP Client，也不从全局 props 猜测实例。
 
 ## 资源与路由
 

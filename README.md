@@ -11,9 +11,9 @@
 
 g2rain 官方 Vue 3 微前端子应用模板，提供 qiankun 集成、独立运行、SSO/Token、动态资源路由、权限、国际化、HTTP、Mock、业务页面代码生成、资源配置生成和 OpenResty 部署能力。
 
-本仓库是“被生成的应用模板”，不是 CLI 本身。[g2rain-app-cli](https://github.com/g2rain/g2rain-app-cli) 负责复制模板、替换 `{{PROJECT_NAME}}` 与 `{{CONTEXT_PATH}}`，并将包信息和项目文档转换为业务 App 身份；生成后的应用继续使用本仓库内置命令开发页面和生成资源配置。
+本仓库是“被生成的应用模板”源仓，不是 CLI 本身。[g2rain-app-cli](https://github.com/g2rain/g2rain-app-cli)（npm：`create-g2rain-app`）在发布时通过 `npm run sync:template` 将本仓快照嵌入包内 `template/`，再负责复制、替换 `{{PROJECT_NAME}}` 与 `{{CONTEXT_PATH}}`，并将包信息和项目文档转换为业务 App 身份；生成后的应用继续使用本仓库约定的命令开发页面和生成资源配置。
 
-[官网](https://www.g2rain.com) · [完整文档](docs/index.md) · [中央 Frontend App Profile](https://github.com/g2rain/g2rain/tree/feature/g2rain-architectur-init/docs/architecture/profiles/frontend-app) · [架构说明](docs/architecture/overview.md) · [代码生成](docs/development/code-generation.md) · [资源配置生成](docs/development/resource-generation.md) · [Issues](https://github.com/g2rain/g2rain/issues) · [Discussions](https://github.com/g2rain/g2rain/discussions)
+[官网](https://www.g2rain.com) · [完整文档](docs/index.md) · [CLI 使用手册](https://github.com/g2rain/g2rain-app-cli/blob/main/docs/development/usage.md) · [中央 Frontend App Profile](https://github.com/g2rain/g2rain/tree/feature/g2rain-architectur-init/docs/architecture/profiles/frontend-app) · [架构说明](docs/architecture/overview.md) · [代码生成](docs/development/code-generation.md) · [资源配置生成](docs/development/resource-generation.md) · [Issues](https://github.com/g2rain/g2rain/issues) · [Discussions](https://github.com/g2rain/g2rain/discussions)
 
 ## 核心能力
 
@@ -70,17 +70,17 @@ npm run dev
 | `npm run dev` | 启动 Vite 开发服务器 |
 | `npm run build` | 执行 `vue-tsc` 并构建 `dist` |
 | `npm run preview` | 本地预览构建产物 |
-| `npm run build:generate -- --tables=dict` | 按 SQL 表生成业务页面骨架 |
-| `npm run build:config` | 生成页面和页面元素资源 JSON |
+| `g2rain-app generate --tables=dict` | 按 SQL 表生成业务页面骨架 |
+| `g2rain-app build-config` | 生成页面和页面元素资源 JSON |
 
 ## 代码生成
 
-先把需要生成的 `CREATE TABLE` 放入 `src/shared/generator/database.sql`，再执行：
+先把需要生成的 `CREATE TABLE` 放入 `scripts/database.sql`，再执行：
 
 ```bash
-npm run build:generate -- --tables=dict
-npm run build:generate -- --tables=dict,medicine_users
-npm run build:generate -- --tables=dict --no-mock --no-route
+g2rain-app generate --tables=dict
+g2rain-app generate --tables=dict,medicine_users
+g2rain-app generate --tables=dict --no-mock --no-route
 ```
 
 生成器会写入或覆盖 `src/views/<table>/index.vue`、`api.ts`、`type.ts`、`mock.ts`，并按选项更新 `src/views/route-map.ts`。生成前先检查 Git 状态，生成后必须 Review Diff 并执行 `npm run build`。完整参数、交互式演练和覆盖风险见[代码生成](docs/development/code-generation.md)。
@@ -90,7 +90,7 @@ npm run build:generate -- --tables=dict --no-mock --no-route
 完成页面、路由和权限点后运行：
 
 ```bash
-npm run build:config
+g2rain-app build-config
 ```
 
 当前实现生成：

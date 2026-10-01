@@ -1,4 +1,4 @@
-import { getHttpClient, type Result } from '@/components/http';
+import { getHttpClient, type Result } from '@runtime/http';
 
 export interface LocaleCodeName {
   code: string;

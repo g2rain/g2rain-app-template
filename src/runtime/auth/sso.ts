@@ -5,8 +5,8 @@
 
 import { env, getPathWithContextPath, isMockEnabled } from '@shared/env';
 import { useAccessTokenStore } from '@platform/stores';
-import { fetchIamKeyId, fetchIamPublicKey, dpopSign, getHttpClient, HttpClient, type Result, type EnsureAccessTokenOptions } from '@/components/http';
-import { refreshBarrier } from '@/components/http/refresh-barrier';
+import { createDpopProof, type DpopClient } from '@g2rain/http';
+import { fetchIamKeyId, fetchIamPublicKey, getHttpClient, refreshBarrier, type Result, type EnsureAccessTokenOptions, type HttpClient } from '@runtime/http';
 import { emitTokenInvalid } from '@platform/apps';
 import { isQiankunRuntime } from '@shared/utils/mode.util';
 import type { AxiosRequestConfig } from 'axios';
@@ -24,6 +24,21 @@ class SSOService {
 
   private getAccessTokenStore() {
     return useAccessTokenStore();
+  }
+
+  private createTokenProof(url: string, data: unknown, client: DpopClient | null, jti: string): Promise<string> {
+    if (!client) {
+      throw new Error('client is required');
+    }
+    return createDpopProof({
+      url,
+      method: 'post',
+      params: '',
+      data,
+      applicationCode: env.VITE_APPLICATION_CODE,
+      client,
+      jti,
+    });
   }
 
   public async redirectToSSO(): Promise<void> {
@@ -59,7 +74,21 @@ class SSOService {
     });
 
     ssoUrl.search = params.toString();
+    // 插件 $subscribe 不会在跳转前同步落盘；独立模式按 Token Store 的 pick 直接写入。
+    if (!isQiankunRuntime()) {
+      localStorage.setItem(
+        'g2rain_token',
+        JSON.stringify({
+          client: accessTokenStore.client,
+          token: accessTokenStore.token,
+          tokenString: accessTokenStore.tokenString,
+          logged: accessTokenStore.logged,
+          tokenExpired: accessTokenStore.tokenExpired,
+        }),
+      );
+    }
     window.location.href = ssoUrl.toString();
+    return new Promise<void>(() => undefined);
   }
 
   public async generateToken(code: string): Promise<void> {
@@ -92,22 +121,14 @@ class SSOService {
       params: '',
       data,
     };
-    headers.DPoP = await dpopSign(
-      env.VITE_TOKEN_END_POINT,
-      'post',
-      '',
-      data,
-      env.VITE_APPLICATION_CODE,
-      accessTokenStore.client,
-      jti,
-    );
+    headers.DPoP = await this.createTokenProof(env.VITE_TOKEN_END_POINT, data, accessTokenStore.client, jti);
     headers['Application-DPoP'] = await this.callSignApi(generateTokenInstant, data, headers.DPoP, jti);
 
     await generateTokenInstant
       .post<{ token: string; keyId: string }>(env.VITE_TOKEN_END_POINT, data, request)
       .then(async (response) => {
-        // 返回的是 Result<{ token: string; keyId: string }> 格式
-        const result = response as Result<{ token: string; keyId: string }>;
+        // auth 客户端 isDirectResponse=true；若网关仍返回 Result 外壳则兼容解析
+        const result = response as unknown as Result<{ token: string; keyId: string }>;
         if (result.status !== 200 && result.status !== 0) {
           throw new Error('GENERATE_TOKEN_FAILURE');
         }
@@ -215,22 +236,14 @@ class SSOService {
           data,
         };
 
-        headers.DPoP = await dpopSign(
-          env.VITE_TOKEN_END_POINT,
-          'post',
-          '',
-          data,
-          env.VITE_APPLICATION_CODE,
-          tokenStore.client,
-          jti,
-        );
+        headers.DPoP = await this.createTokenProof(env.VITE_TOKEN_END_POINT, data, tokenStore.client, jti);
 
         const response = await refreshInstant.post<{ token: string; keyId: string }>(
           env.VITE_TOKEN_END_POINT,
           data,
           request,
         );
-        const result = response as Result<{ token: string; keyId: string }>;
+        const result = response as unknown as Result<{ token: string; keyId: string }>;
 
         if (result.status !== 200 && result.status !== 0) {
           throw new Error('REFRESH_TOKEN_FAILURE');
@@ -261,7 +274,7 @@ class SSOService {
     return this.refreshPromise;
   }
 
-  public async callSignApi(http: HttpClient, data: any, headerDPoP: string, jti: string): Promise<string> {
+  public async callSignApi(http: HttpClient<true>, data: any, headerDPoP: string, jti: string): Promise<string> {
     const response = await http.post('/lua/sign_code?jti=' + jti, data, {
       headers: {
         'Content-Type': 'application/json',

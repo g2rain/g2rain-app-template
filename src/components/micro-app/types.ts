@@ -3,7 +3,7 @@
  * 使用泛型和 Discriminated Union 实现类型安全的事件系统
  */
 
-import type { Client } from '@/components/http';
+import type { DpopClient as Client } from '@g2rain/http';
 
 /**
  * 事件类型枚举
@@ -13,6 +13,8 @@ export enum MicroAppEventType {
   REQUEST_TOKEN = 'g2rain:sub-app:request-token',
   /** 主应用返回 token */
   TOKEN_RESPONSE = 'g2rain:main-app:token-response',
+  /** 主应用返回认证错误（协议扩展） */
+  TOKEN_ERROR = 'g2rain:main-app:token-error',
   /** 子应用通知 token 失效 */
   TOKEN_INVALID = 'g2rain:sub-app:token-invalid',
   /** 子应用路由变化 */
@@ -32,16 +34,18 @@ export interface MicroAppMessage<T extends MicroAppEventType, D = unknown> {
   requestId?: string;
   /** 时间戳 */
   timestamp: number;
-  /** 发送方应用标识（可选） */
+  /** 发送方应用标识（可选；迁移期等于 instanceId） */
   appKey?: string;
+  applicationCode?: string;
+  viewId?: string;
+  instanceId?: string;
 }
 
 /**
  * Token 请求消息数据
  */
 export interface TokenRequestData {
-  /** 其他请求参数（可选） */
-  [key: string]: any;
+  reason?: 'mount' | 'retry';
 }
 
 /**
@@ -52,8 +56,19 @@ export interface TokenResponseData {
   token: string;
   /** Token 的 kid（密钥 ID） */
   tokenKid: string;
-  /** 客户端信息（可选） */
+  /** 客户端信息（可选；Shell 浅拷贝） */
   client?: Client;
+}
+
+/**
+ * Token 错误消息数据（仅错误码，无认证载荷）
+ */
+export interface TokenErrorData {
+  code:
+    | 'UNAUTHORIZED_INSTANCE'
+    | 'SESSION_EXPIRED'
+    | 'AUTH_TIMEOUT'
+    | 'AUTH_UNAVAILABLE';
 }
 
 /**
@@ -83,13 +98,19 @@ export interface RouteChangeData {
  */
 export type TokenRequestMessage = MicroAppMessage<MicroAppEventType.REQUEST_TOKEN, TokenRequestData>;
 export type TokenResponseMessage = MicroAppMessage<MicroAppEventType.TOKEN_RESPONSE, TokenResponseData>;
+export type TokenErrorMessage = MicroAppMessage<MicroAppEventType.TOKEN_ERROR, TokenErrorData>;
 export type TokenInvalidMessage = MicroAppMessage<MicroAppEventType.TOKEN_INVALID, TokenInvalidData>;
 export type RouteChangeMessage = MicroAppMessage<MicroAppEventType.ROUTE_CHANGE, RouteChangeData>;
 
 /**
  * 所有微前端消息的联合类型
  */
-export type MicroAppMessageUnion = | TokenRequestMessage | TokenResponseMessage | TokenInvalidMessage | RouteChangeMessage;
+export type MicroAppMessageUnion =
+  | TokenRequestMessage
+  | TokenResponseMessage
+  | TokenErrorMessage
+  | TokenInvalidMessage
+  | RouteChangeMessage;
 
 /**
  * 类型守卫函数：判断是否为 Token 请求消息
@@ -102,7 +123,14 @@ export function isTokenRequestMessage(message: MicroAppMessageUnion): message is
  * 类型守卫函数：判断是否为 Token 响应消息
  */
 export function isTokenResponseMessage(message: MicroAppMessageUnion): message is TokenResponseMessage {
-  return (message.type === MicroAppEventType.TOKEN_RESPONSE && 'token' in message.data);
+  return message.type === MicroAppEventType.TOKEN_RESPONSE && 'token' in message.data;
+}
+
+/**
+ * 类型守卫函数：判断是否为 Token 错误消息
+ */
+export function isTokenErrorMessage(message: MicroAppMessageUnion): message is TokenErrorMessage {
+  return message.type === MicroAppEventType.TOKEN_ERROR && 'code' in message.data;
 }
 
 /**
@@ -148,6 +176,18 @@ export const MicroAppMessageFactory = {
   },
 
   /**
+   * 创建 Token 错误消息
+   */
+  createTokenError(data: TokenErrorData, requestId?: string): TokenErrorMessage {
+    return {
+      type: MicroAppEventType.TOKEN_ERROR,
+      data,
+      requestId,
+      timestamp: Date.now(),
+    };
+  },
+
+  /**
    * 创建 Token 失效消息
    */
   createTokenInvalid(data: TokenInvalidData = {}): TokenInvalidMessage {
@@ -184,7 +224,7 @@ export interface MicroAppMessageHandler {
 
 /**
  * 统一消息处理器接口
- * 根据消息类型自动分发到对应的处理器
+ * 根据消息的 type 自动分发到对应的处理器
  */
 export interface MicroAppMessageProcessor {
   /**

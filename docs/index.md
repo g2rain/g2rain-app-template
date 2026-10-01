@@ -10,9 +10,12 @@
 - [层次与目录职责](architecture/layers.md)
 - [依赖规则](architecture/dependencies.md)
 - [运行时流程](architecture/runtime-flows.md)
+- [Platform 生命周期](architecture/platform-lifecycle.md)
 - [已知架构偏差](architecture/deviations.md)
 
 ## 开发
+
+业务 App 的创建、页面生成和资源配置生成使用 [CLI 使用手册](https://github.com/g2rain/g2rain-app-cli/blob/main/docs/development/usage.md)。下面是维护本模板仓库时的文档。
 
 - [本地开发](development/local-development.md)
 - [代码规范](development/code-conventions.md)

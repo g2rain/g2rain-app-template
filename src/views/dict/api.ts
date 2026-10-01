@@ -5,8 +5,8 @@
  * 同一 usageCode 在 TTL 内缓存全量列表，按 code / name 优先内存匹配。
  */
 
-import { getHttpClient } from '@/components/http';
-import type { RemoteSelectOption } from '@/components';
+import { getHttpClient } from '@runtime/http';
+import type { RemoteSelectOption } from '@g2rain/ui';
 import { useLocaleStore } from '@platform/stores/locale.store';
 import type { DictItem } from './type';
 
@@ -103,7 +103,7 @@ export class DictItemApi {
     const http = getHttpClient('default');
     const promise = (async () => {
       const res = await http.get<DictItem[]>(LOCALIZED_OPTIONS_PATH, query);
-      return res.data || [];
+      return (res.data || []) as unknown as RemoteSelectOption[];
     })();
 
     DictItemApi.httpCache.set(cacheKey, {

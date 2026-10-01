@@ -40,7 +40,7 @@
 - `views` 业务模块使用 `index.vue + api.ts + type.ts + mock.ts（可选）`，并在 `views/route-map.ts` 注册组件。
 - 新增模块通过稳定 `index.ts` 暴露公共 API，外部不深度导入内部实现。
 - 使用 Vue Composition API 和 `<script setup lang="ts">`；禁止新增 JavaScript 文件，避免新增 `any`，必须使用时限定边界并说明原因。
-- 独立模式与 qiankun 集成模式都要考虑；集成模式必须维持 `appKey` 实例隔离和卸载清理。
+- 独立模式与 qiankun 集成模式都要考虑；集成模式必须维持 `instanceId` 多实例隔离与卸载清理，迁移期 `appKey === instanceId`；Token 不经公开 props（Auth Bridge）。
 - Token、私钥、生产域名和敏感配置不得写入源码、Mock、生成模板或提交记录。
 - 修改路由、静态权限点或 API 后评估并运行 `npm run build:config`；当前工具不会生成 API endpoint，不能伪造生成结果。
 - 运行代码生成器前检查 Git 状态；生成器会覆盖文件，必须 Review Diff，不能覆盖未合并的手工业务代码。

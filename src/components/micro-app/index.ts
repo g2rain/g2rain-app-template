@@ -14,10 +14,12 @@ export type {
   MicroAppMessageUnion,
   TokenRequestMessage,
   TokenResponseMessage,
+  TokenErrorMessage,
   TokenInvalidMessage,
   RouteChangeMessage,
   TokenRequestData,
   TokenResponseData,
+  TokenErrorData,
   TokenInvalidData,
   RouteChangeData,
   EventAdapter,
@@ -27,6 +29,7 @@ export type {
 export {
   isTokenRequestMessage,
   isTokenResponseMessage,
+  isTokenErrorMessage,
   isTokenInvalidMessage,
   isRouteChangeMessage,
 } from './types';
@@ -47,7 +50,7 @@ export type {
 export const MICRO_APP_EVENT = {
   REQUEST_TOKEN: MicroAppEventType.REQUEST_TOKEN,
   TOKEN_RESPONSE: MicroAppEventType.TOKEN_RESPONSE,
+  TOKEN_ERROR: MicroAppEventType.TOKEN_ERROR,
   TOKEN_INVALID: MicroAppEventType.TOKEN_INVALID,
   ROUTE_CHANGE: MicroAppEventType.ROUTE_CHANGE,
 } as const;
-
