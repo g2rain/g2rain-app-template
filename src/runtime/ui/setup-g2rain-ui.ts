@@ -65,9 +65,7 @@ export function setupG2rainUi(app: App): void {
         loadOptions: async (params) => {
           const usageCode = params.usageCode?.trim() || params.dictCode?.trim();
           const code = params.code?.trim();
-          const key = params.key !== undefined
-            ? params.key.trim()
-            : typeof params.query?.key === 'string' ? params.query.key.trim() : undefined;
+          const key = params.key?.trim() || undefined;
           return DictItemApi.select({
             usageCode,
             code,
