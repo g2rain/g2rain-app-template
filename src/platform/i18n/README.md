@@ -9,6 +9,7 @@
 | 模板 | `{{ $t('MESSAGE_CODE', '页面默认文案') }}` |
 | JS 要一段文字 | `t('MESSAGE_CODE', '页面默认文案')` |
 | JS 弹提示 | `ElMessage.success(t('MESSAGE_CODE', '操作成功'))` |
+| JS 有占位变量 | `t('MESSAGE_CODE', { n }, '共 {n} 条')`（勿再手写 `.replace`） |
 
 ## 文案包 tags（`.env`）
 
